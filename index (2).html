@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PhD Map</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<style>
+:root{--bg:#f6f5f1;--fg:#1d1d1b;--mut:#66665f;--card:#fff;--bd:#dedcd4}
+@media(prefers-color-scheme:dark){:root{--bg:#171715;--fg:#ecebe6;--mut:#9b9a93;--card:#232321;--bd:#3b3b37}}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font:14px/1.45 system-ui,sans-serif;background:var(--bg);color:var(--fg);display:flex;flex-direction:column}
+header{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 12px;background:var(--card);border-bottom:1px solid var(--bd)}
+h1{font-size:17px;margin:0 6px 0 0}
+button,select,input,textarea{font:inherit;color:var(--fg);background:var(--card);border:1px solid var(--bd);border-radius:6px;padding:6px 9px;min-height:36px}
+button{cursor:pointer}
+.tab.on{color:#111;font-weight:600}
+#q{flex:1;min-width:140px}
+#info{width:100%;font-size:12px;color:var(--mut)}
+#ban{padding:8px 12px;background:#fde68a;color:#111}
+main{flex:1;min-height:0;display:grid;grid-template-columns:1fr 400px}
+#map{background:#cfd8e3;min-height:280px}
+#side{display:flex;flex-direction:column;min-height:0;border-left:1px solid var(--bd)}
+#filters{display:flex;flex-wrap:wrap;gap:6px;padding:8px;border-bottom:1px solid var(--bd);align-items:center}
+#filters label{display:flex;gap:4px;align-items:center;font-size:13px}
+#filters select{max-width:48%}
+#cnt{padding:6px 10px;color:var(--mut);font-weight:600}
+#list{overflow:auto;flex:1}
+.card{margin:6px 8px;padding:10px;background:var(--card);border:1px solid var(--bd);border-left:5px solid var(--c);border-radius:8px;cursor:pointer}
+.card b{display:block}.card small{color:var(--mut)}
+.bd{display:inline-block;font-size:11px;padding:1px 8px;border-radius:9px;margin:5px 4px 0 0;background:var(--bd)}
+.red{background:#DC2626;color:#fff}.amb{background:#F59E0B;color:#111}.org{background:#F97316;color:#111}.fp{background:#EDE9FE;color:#4C1D95}.grey{opacity:.6}
+#dr{position:fixed;top:0;right:0;bottom:0;width:420px;max-width:100%;background:var(--card);padding:14px;overflow:auto;z-index:1200;box-shadow:0 0 18px #0005;border-left:5px solid var(--c)}
+#dr table{border-collapse:collapse;width:100%}
+#dr th{text-align:left;color:var(--mut);font-weight:400;padding:3px 8px 3px 0;vertical-align:top;white-space:nowrap}
+#dr a{color:#2563eb;word-break:break-all}
+@media(prefers-color-scheme:dark){#dr a{color:#7db2ff}}
+#dr textarea,#dr select,#dr input{width:100%;margin:3px 0 8px}
+.lk{display:block;padding:3px 0}
+.pop a{display:block;padding:2px 0;color:#2563eb}
+.empty{padding:14px;color:var(--mut)}
+.leaflet-tooltip.cnt{background:transparent;border:0;box-shadow:none;color:#111;font-weight:700}
+.leaflet-tooltip.cnt:before{display:none}
+@media(max-width:850px){
+main{grid-template-columns:1fr;grid-template-rows:40vh minmax(0,1fr)}
+#side{border-left:0;border-top:1px solid var(--bd)}
+#dr{top:auto;left:0;width:auto;max-height:80vh;border-left:0;border-top:5px solid var(--c)}}
+</style></head><body>
+<header>
+ <h1>PhD Map</h1>
+ <span id="tabs"></span>
+ <input id="q" type="search" placeholder="Search names, groups, cities, topics">
+ <button id="bt">My Tracker</button>
+ <button id="be">Export backup</button>
+ <button id="bi">Import backup</button><input id="fi" type="file" accept=".json" hidden>
+ <div id="info"></div>
+</header>
+<div id="ban" hidden></div>
+<main>
+ <div id="map"></div>
+ <section id="side">
+  <div id="filters"></div>
+  <div id="cnt"></div>
+  <div id="list"></div>
+ </section>
+</main>
+<aside id="dr" hidden></aside>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script>
+"use strict";
+var $=function(s){return document.querySelector(s)};
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+var VIEWS={openings:['Openings','#F59E0B'],universities:['Universities','#3B82F6'],supervisors:['Supervisors','#10B981']};
+var STATUS=[['none','Not contacted'],['emailed','Emailed'],['replied','Replied'],['interview','Interview'],['offer','Offer'],['declined','Declined']];
+var TK='phdmap.tracker.v1';
+var D={universities:[],supervisors:[],openings:[]},view='openings',cur=null;
+var F={country:'',topic:'',hideClosed:true,funded:false,taking:false};
+var T={};
+try{T=JSON.parse(localStorage.getItem(TK))||{}}catch(e){T={}}
+function saveT(){try{localStorage.setItem(TK,JSON.stringify(T))}catch(e){}}
+function today(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function days(d){return Math.round((Date.parse(d)-Date.parse(today()))/864e5)}
+function uniOf(r){return r.lat!=null?r:(D.universities.find(function(u){return u.id===r.universityId})||{})}
+function byId(id){return D.openings.concat(D.universities,D.supervisors).find(function(r){return r.id===id})}
+function typeOf(r){return D.openings.indexOf(r)>=0?'openings':D.universities.indexOf(r)>=0?'universities':'supervisors'}
+function title(r){return r.title||r.name||r.id}
+function topics(r){return r.subfields||[]}
+function deadline(r){
+ if(r.status==='closed'||(r.deadline&&days(r.deadline)<0))return['Closed','grey',3];
+ if(!r.deadline)return['Rolling','',2];
+ var n=days(r.deadline);
+ return[n===0?'Due today':n+(n===1?' day left':' days left'),n<14?'red':'amb',1]}
+function link(u){return/^https?:\/\//.test(u||'')?'<a href="'+esc(u)+'" target="_blank" rel="noopener">'+esc(u.replace(/^https?:\/\/(www\.)?/,'').slice(0,60))+'</a>':esc(u)}
+
+/* ---------- map: OpenStreetMap tiles (no key). Falls back to Esri, and pins work even with no tiles ---------- */
+var map=L.map('map',{minZoom:3,maxBounds:[[28,-32],[74,52]]}).setView([52,12],4);
+var tileFails=0,tl,usingFallback=false;
+function addTiles(url,att){
+ if(tl)tl.remove();tileFails=0;
+ tl=L.tileLayer(url,{attribution:att,maxZoom:15}).addTo(map);
+ tl.on('tileerror',function(){
+  tileFails++;
+  if(tileFails===6&&!usingFallback){usingFallback=true;
+   addTiles('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}','Tiles &copy; Esri')}
+ })}
+addTiles('https://tile.openstreetmap.org/{z}/{x}/{y}.png','&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors');
+var layer=L.layerGroup().addTo(map);
+
+/* ---------- filtering ---------- */
+function items(){
+ var q=($('#q').value||'').toLowerCase();
+ var a=D[view].filter(function(r){
+  var u=uniOf(r);
+  if(F.country&&u.country!==F.country)return false;
+  if(F.topic&&topics(r).indexOf(F.topic)<0&&!(view==='openings'&&topics(u).indexOf(F.topic)>=0))return false;
+  if(F.funded&&view!=='universities'&&!r.fundedProject)return false;
+  if(F.taking&&view==='supervisors'&&r.takingStudents!=='yes')return false;
+  if(view==='openings'&&F.hideClosed&&deadline(r)[2]===3)return false;
+  if(q){var hay=[title(r),r.group,u.name,u.city,u.country,topics(r).join(' ')].join(' ').toLowerCase();
+   if(hay.indexOf(q)<0)return false}
+  return true});
+ if(view==='openings')a.sort(function(x,y){var k=deadline(x)[2]-deadline(y)[2];return k||String(x.deadline).localeCompare(String(y.deadline))});
+ else a.sort(function(x,y){return title(x).localeCompare(title(y))});
+ return a}
+
+function renderFilters(){
+ var uniq=function(a){return a.filter(function(v,i){return v&&a.indexOf(v)===i}).sort()};
+ var countries=uniq(D.universities.map(function(u){return u.country}));
+ var tops=uniq([].concat.apply([],D.universities.concat(D.supervisors).map(topics)));
+ var opt=function(a,sel,all){return'<option value="">'+all+'</option>'+a.map(function(x){return'<option'+(x===sel?' selected':'')+'>'+esc(x)+'</option>'}).join('')};
+ $('#filters').innerHTML=
+  '<select id="fc" aria-label="Country">'+opt(countries,F.country,'All countries')+'</select>'+
+  '<select id="ft" aria-label="Topic">'+opt(tops,F.topic,'All topics')+'</select>'+
+  (view==='openings'?'<label><input type="checkbox" id="fh"'+(F.hideClosed?' checked':'')+'>Hide closed</label>':'')+
+  (view!=='universities'?'<label><input type="checkbox" id="ff"'+(F.funded?' checked':'')+'>Funded project</label>':'')+
+  (view==='supervisors'?'<label><input type="checkbox" id="fk"'+(F.taking?' checked':'')+'>Taking students</label>':'')+
+  '<button id="fx">Clear</button>'}
+$('#filters').addEventListener('change',function(e){
+ var id=e.target.id;
+ if(id==='fc')F.country=e.target.value;
+ else if(id==='ft')F.topic=e.target.value;
+ else if(id==='fh')F.hideClosed=e.target.checked;
+ else if(id==='ff')F.funded=e.target.checked;
+ else if(id==='fk')F.taking=e.target.checked;
+ render()});
+$('#filters').addEventListener('click',function(e){
+ if(e.target.id==='fx'){F={country:'',topic:'',hideClosed:true,funded:false,taking:false};$('#q').value='';renderFilters();render()}});
+var qt;$('#q').addEventListener('input',function(){clearTimeout(qt);qt=setTimeout(render,150)});
+
+/* ---------- rendering ---------- */
+function statusChip(id){var t=T[id];if(!t||!t.status||t.status==='none')return'';
+ var s=STATUS.filter(function(x){return x[0]===t.status})[0];return s?'<span class="bd org">'+s[1]+'</span>':''}
+function card(r){
+ var u=uniOf(r),sub=view==='openings'?(u.name||'')+', '+(u.country||''):view==='universities'?(r.city||'')+', '+(r.country||''):(r.group||'')+(r.group&&u.name?', ':'')+(u.name||'');
+ var b='';
+ if(view==='openings'){var d=deadline(r);b+='<span class="bd '+d[1]+'">'+d[0]+'</span>'}
+ if(r.fundedProject)b+='<span class="bd fp">&#9670; '+esc(r.fundedProject)+'</span>';
+ if(view==='universities'&&r.programType)b+='<span class="bd">'+esc(r.programType)+'</span>';
+ if(view==='supervisors'&&r.takingStudents==='yes')b+='<span class="bd amb">Taking students</span>';
+ if(r.uncertain)b+='<span class="bd org">Uncertain</span>';
+ var t=T[r.id]||{};
+ if(t.follow&&days(t.follow)<=0)b+='<span class="bd red">Follow up</span>';
+ return'<div class="card" data-id="'+esc(r.id)+'" style="--c:'+VIEWS[view][1]+'" tabindex="0"><b>'+esc(title(r))+'</b><small>'+esc(sub)+'</small><div>'+b+statusChip(r.id)+'</div></div>'}
+
+function render(){
+ var a=items();
+ $('#cnt').textContent=a.length+' '+VIEWS[view][0].toLowerCase();
+ $('#list').innerHTML=a.length?a.map(card).join(''):'<p class="empty">Nothing matches. Clear a filter or change the search.</p>';
+ layer.clearLayers();
+ var groups={};
+ a.forEach(function(r){var u=uniOf(r);if(u.lat==null||u.lng==null)return;
+  var k=u.lat+','+u.lng;(groups[k]=groups[k]||{u:u,rs:[]}).rs.push(r)});
+ var pts=[];
+ Object.keys(groups).forEach(function(k){
+  var g=groups[k],n=g.rs.length;
+  var m=L.circleMarker([g.u.lat,g.u.lng],{radius:Math.min(9+Math.sqrt(n)*3,24),color:'#fff',weight:1.5,fillColor:VIEWS[view][1],fillOpacity:.9});
+  var pop=document.createElement('div');pop.className='pop';
+  pop.innerHTML='<b>'+esc(g.u.name||'')+'</b>'+g.rs.slice(0,25).map(function(r){return'<a href="#" data-id="'+esc(r.id)+'">'+esc(title(r))+'</a>'}).join('')+(n>25?'<small>+'+(n-25)+' more in the list</small>':'');
+  pop.addEventListener('click',function(e){var id=e.target.getAttribute&&e.target.getAttribute('data-id');if(id){e.preventDefault();openD(id)}});
+  m.bindPopup(pop);
+  if(n>1)m.bindTooltip(String(n),{permanent:true,direction:'center',className:'cnt'});
+  m.addTo(layer);pts.push([g.u.lat,g.u.lng])});
+ if(pts.length)map.fitBounds(pts,{padding:[30,30],maxZoom:7})}
+
+function setView(v){
+ view=v;cur=null;$('#dr').hidden=true;
+ $('#tabs').innerHTML=Object.keys(VIEWS).map(function(k){return'<button class="tab'+(k===v?' on':'')+'" data-v="'+k+'" style="'+(k===v?'background:'+VIEWS[k][1]+';border-color:'+VIEWS[k][1]:'')+'">'+VIEWS[k][0]+'</button>'}).join('');
+ renderFilters();render()}
+$('#tabs').addEventListener('click',function(e){var v=e.target.getAttribute('data-v');if(v)setView(v)});
+$('#list').addEventListener('click',function(e){var c=e.target.closest('.card');if(c)openD(c.dataset.id)});
+$('#list').addEventListener('keydown',function(e){if(e.key==='Enter'){var c=e.target.closest('.card');if(c)openD(c.dataset.id)}});
+
+/* ---------- detail drawer + tracker ---------- */
+function openD(id){
+ var r=byId(id);if(!r)return;
+ var t=typeOf(r);if(t!==view)setView(t);
+ cur=id;var u=uniOf(r),tr=T[id]||{status:'none'};
+ var skip=['id','lat','lng','verified','uncertain','firstSeen','sourceUrl'];
+ var rows=Object.keys(r).filter(function(k){return skip.indexOf(k)<0&&!/Id$/.test(k)&&r[k]!=null&&r[k]!==''}).map(function(k){
+  var v=r[k];return'<tr><th>'+esc(k)+'</th><td>'+(/url$/i.test(k)?link(v):esc(Array.isArray(v)?v.join(', '):v))+'</td></tr>'}).join('');
+ var lk=function(h,arr){return arr.length?'<h4>'+h+'</h4>'+arr.map(function(x){return'<a href="#" class="lk" data-id="'+esc(x.id)+'">'+esc(title(x))+'</a>'}).join(''):''};
+ var uni=D.universities.filter(function(x){return x.id===r.universityId}),rel;
+ if(t==='universities')rel=lk('Supervisors',D.supervisors.filter(function(s){return s.universityId===id}))+lk('Openings',D.openings.filter(function(o){return o.universityId===id}));
+ else if(t==='supervisors')rel=lk('University',uni)+lk('Openings',D.openings.filter(function(o){return o.supervisorId===id}));
+ else rel=lk('University',uni)+lk('Supervisor',D.supervisors.filter(function(s){return s.id===r.supervisorId}));
+ var dr=$('#dr');dr.style.setProperty('--c',VIEWS[t][1]);
+ dr.innerHTML='<button id="xd" style="float:right">Close</button><h3 style="margin:0 0 6px">'+esc(title(r))+'</h3>'+
+  (r.uncertain?'<p><span class="bd org">Uncertain, check the official page</span></p>':'')+
+  '<small>Verified: '+esc(r.verified||'not stated')+(r.sourceUrl?' &middot; source: '+link(r.sourceUrl):'')+'</small>'+
+  '<table>'+rows+'</table>'+rel+
+  '<h4>Tracker</h4><select id="ts">'+STATUS.map(function(s){return'<option value="'+s[0]+'"'+(s[0]===tr.status?' selected':'')+'>'+s[1]+'</option>'}).join('')+'</select>'+
+  '<label>Last contact<input type="date" id="tl" value="'+esc(tr.last||'')+'"></label>'+
+  '<label>Follow-up date<input type="date" id="tf" value="'+esc(tr.follow||'')+'"></label>'+
+  '<textarea id="tn" rows="3" placeholder="Notes">'+esc(tr.notes||'')+'</textarea>'+
+  '<textarea id="tc" rows="7" placeholder="Paste email conversations here">'+esc(tr.conv||'')+'</textarea><small id="sv"></small>';
+ dr.hidden=false;dr.scrollTop=0;
+ if(u.lat!=null)map.flyTo([u.lat,u.lng],Math.max(map.getZoom(),6),{duration:.5})}
+$('#dr').addEventListener('click',function(e){
+ if(e.target.id==='xd'){$('#dr').hidden=true;cur=null}
+ var a=e.target.closest('.lk');if(a){e.preventDefault();openD(a.dataset.id)}});
+$('#dr').addEventListener('input',function(){
+ if(!cur)return;
+ T[cur]={status:$('#ts').value,last:$('#tl').value,follow:$('#tf').value,notes:$('#tn').value,conv:$('#tc').value};
+ saveT();$('#sv').textContent='Saved';info()});
+$('#dr').addEventListener('change',function(){if(!cur)return;var sc=$('#list').scrollTop;render();$('#list').scrollTop=sc});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){$('#dr').hidden=true;cur=null}});
+
+/* ---------- My Tracker ---------- */
+$('#bt').onclick=function(){
+ var es=Object.keys(T).filter(function(k){var t=T[k];return t.status!=='none'||t.notes||t.conv||t.follow||t.last});
+ es.sort(function(a,b){return(T[a].follow||'9999').localeCompare(T[b].follow||'9999')});
+ var dr=$('#dr');dr.style.setProperty('--c','#8B5CF6');cur=null;
+ dr.innerHTML='<button id="xd" style="float:right">Close</button><h3 style="margin:0 0 8px">My Tracker</h3>'+
+  (es.length?es.map(function(id){var r=byId(id),t=T[id],s=STATUS.filter(function(x){return x[0]===t.status})[0];
+   return r?'<a href="#" class="lk" data-id="'+esc(id)+'"><b>'+esc(title(r))+'</b> <small>'+(s?s[1]:'')+(t.follow?' &middot; follow-up '+esc(t.follow):'')+'</small></a>':
+   '<p><b>'+esc(id)+'</b> <small>Record no longer listed</small></p>'}).join(''):'<p class="empty">Nothing tracked yet. Open any record and set a status or add notes.</p>');
+ dr.hidden=false};
+
+/* ---------- backup ---------- */
+$('#be').onclick=function(){
+ var a=document.createElement('a');
+ a.href=URL.createObjectURL(new Blob([JSON.stringify({version:1,tracker:T},null,1)],{type:'application/json'}));
+ a.download='phdmap-backup-'+today()+'.json';a.click();
+ try{localStorage.setItem('phdmap.lastexport',today())}catch(e){}info()};
+$('#bi').onclick=function(){$('#fi').click()};
+$('#fi').onchange=function(e){
+ var f=e.target.files[0];if(!f)return;
+ var rd=new FileReader();
+ rd.onload=function(){try{
+  var j=JSON.parse(rd.result);
+  if(j.universities){load(j);return}
+  if(!j.tracker)throw 0;
+  var ks=Object.keys(j.tracker),clash=ks.filter(function(k){return T[k]}),ow=true;
+  if(clash.length)ow=confirm(clash.length+' entries already exist. Overwrite them with the backup?');
+  ks.forEach(function(k){if(!T[k]||ow)T[k]=j.tracker[k]});saveT();render();info()
+ }catch(err){alert('That file is not a valid PhD Map backup.')}};
+ rd.readAsText(f);e.target.value=''};
+
+/* ---------- start ---------- */
+function info(){
+ var last=null;try{last=localStorage.getItem('phdmap.lastexport')}catch(e){}
+ var need=Object.keys(T).length&&(!last||days(last)<-14);
+ $('#info').textContent='Data updated: '+(D.lastUpdated||'not stated')+' · '+D.universities.length+' universities, '+D.supervisors.length+' supervisors, '+D.openings.length+' openings'+(need?' · Export a backup of your tracker.':'')}
+function load(j){
+ D={lastUpdated:j.lastUpdated||'',universities:j.universities||[],supervisors:j.supervisors||[],openings:j.openings||[]};
+ $('#ban').hidden=true;info();setView(view)}
+setView(view);
+fetch('data.json?t='+Date.now()).then(function(r){if(!r.ok)throw 0;return r.json()}).then(load).catch(function(){
+ $('#ban').hidden=false;
+ $('#ban').textContent='Could not load data.json. Make sure it is in the same folder as index.html, or use Import backup to load a data file.'});
+</script>
+</body></html>
