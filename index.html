@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PhD Map: astrophysics and cosmology in Europe</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css">
+<style>
+:root{--bg:#f6f5f1;--fg:#1d1d1b;--mut:#66665f;--card:#fff;--bd:#dedcd4;--ac:#F59E0B;
+--cv-openings:#F59E0B;--cv-universities:#3B82F6;--cv-supervisors:#10B981;
+--fpbg:#EDE9FE;--fpfg:#4C1D95;--fpbd:#C4B5FD}
+@media(prefers-color-scheme:dark){:root{--bg:#171715;--fg:#ecebe6;--mut:#9b9a93;--card:#232321;--bd:#3b3b37;
+--cv-openings:#FBBF24;--cv-universities:#60A5FA;--cv-supervisors:#34D399;
+--fpbg:#2E1065;--fpfg:#DDD6FE;--fpbd:#6D28D9}}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{font:14px/1.45 system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg);color:var(--fg);display:flex;flex-direction:column}
+header{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 12px;background:var(--card);border-bottom:1px solid var(--bd)}
+h1{font-size:17px;margin:0 8px 0 0}h4{margin:14px 0 4px}
+button,.b,select,input,textarea{font:inherit;color:var(--fg)}
+button,.b{padding:6px 10px;min-height:38px;border:1px solid var(--bd);border-radius:6px;background:var(--card);cursor:pointer;display:inline-flex;align-items:center}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,.card:focus-visible{outline:2px solid var(--ac);outline-offset:1px}
+#tabs{display:flex;gap:4px}#tabs button.on{background:var(--c);border-color:var(--c);color:#111;font-weight:600}
+#q{flex:1;min-width:150px;min-height:38px;padding:6px 9px;border:1px solid var(--bd);border-radius:6px;background:var(--bg)}
+#bh{min-width:38px;justify-content:center;font-weight:600}
+#meta{width:100%;font-size:12px;color:var(--mut)}
+#ban{padding:8px 12px;background:#fde68a;color:#111}
+main{flex:1;min-height:0;display:grid;grid-template-columns:210px 1fr 350px;grid-template-areas:"f m l"}
+#fl{grid-area:f;overflow:auto;padding:10px;background:var(--card);border-right:1px solid var(--bd)}
+#fl summary{font-weight:600;cursor:pointer;margin-bottom:6px}
+#fo label{display:block;margin:8px 0 2px;font-size:12px;color:var(--mut)}
+#fo select,#fo input[type=date]{width:100%;min-height:36px;padding:4px;background:var(--bg);border:1px solid var(--bd);border-radius:6px}
+#fo .ck{display:flex;gap:6px;align-items:center;color:var(--fg);font-size:13px}
+#fo .ms{border:1px solid var(--bd);border-radius:6px;margin:8px 0 2px;padding:2px 6px 4px;min-width:0}
+#fo .ms legend{font-size:12px;color:var(--mut);padding:0 4px}
+#fo .msl{max-height:130px;overflow:auto}
+#fo .msl label{margin:2px 0}
+#map{grid-area:m;min-height:260px}
+#ls{grid-area:l;overflow:auto;border-left:1px solid var(--bd)}
+#cnt{padding:8px 10px;font-weight:600;color:var(--mut)}
+.card{margin:6px 8px;padding:10px;background:var(--card);border:1px solid var(--bd);border-left:4px solid var(--ac);border-radius:8px;cursor:pointer}
+.card.sel{outline:2px solid var(--ac)}.card b{display:block}.card small{color:var(--mut)}
+.bd{display:inline-block;font-size:11px;padding:1px 8px;border-radius:9px;margin:5px 4px 0 0;background:var(--bd)}
+.r{background:#DC2626;color:#fff}.a{background:#F59E0B;color:#111}.x{opacity:.6}.nw{background:var(--ac);color:#111}.un{background:#F97316;color:#111}
+.fp{background:var(--fpbg);color:var(--fpfg);border:1px solid var(--fpbd);padding:0 7px}
+.chip{font-size:11px;padding:1px 8px;border-radius:9px;display:inline-block;margin:5px 4px 0 0}
+.emp{padding:14px;color:var(--mut)}
+#dr,#md{position:fixed;background:var(--card);overflow:auto;padding:14px;z-index:1200;box-shadow:0 0 18px #0004}
+#dr{top:0;right:0;bottom:0;width:390px;max-width:100%;border-left:4px solid var(--ac)}
+#md{inset:6% 0;margin:auto;width:min(640px,94%);height:fit-content;max-height:88%;border-radius:10px;border:1px solid var(--bd)}
+#dr table{border-collapse:collapse;width:100%}#dr th{text-align:left;color:var(--mut);font-weight:400;padding:3px 8px 3px 0;vertical-align:top;white-space:nowrap}
+#dr a,#md a{color:#2563eb;word-break:break-all}@media(prefers-color-scheme:dark){#dr a,#md a{color:#7db2ff}}
+.lk{display:block;padding:3px 0}
+#dr textarea,#dr select,#dr input{width:100%;margin:3px 0 6px;padding:6px;border:1px solid var(--bd);border-radius:6px;background:var(--bg)}
+#md select{margin:0 6px 8px 0;min-height:36px;padding:4px;background:var(--bg);border:1px solid var(--bd);border-radius:6px}
+#md p,#md li{margin:4px 0}#md ul{padding-left:18px;margin:4px 0}
+.x1{float:right}
+@media(max-width:900px){
+main{grid-template-columns:1fr;grid-template-rows:42vh auto minmax(0,1fr);grid-template-areas:"m" "f" "l"}
+#fl{border:0;border-bottom:1px solid var(--bd)}#ls{border:0}
+#dr{top:auto;left:0;width:auto;max-height:78vh;border-left:0;border-top:4px solid var(--ac)}}
+</style></head><body>
+<header>
+<h1>PhD Map</h1><nav id="tabs"></nav>
+<input id="q" type="search" placeholder="Search names, groups, cities, topics" aria-label="Search">
+<button id="bt">My Tracker</button><button id="be">Export backup</button>
+<label class="b">Import backup<input id="ib" type="file" accept=".json" hidden></label>
+<label class="b">Import data<input id="id" type="file" accept=".json" hidden></label>
+<button id="bh" aria-label="Help" title="Help">?</button>
+<div id="meta"></div></header>
+<div id="ban" hidden></div>
+<main><details id="fl"><summary>Filters</summary><div id="fo"></div></details>
+<div id="map"></div><section id="ls"><div id="cnt"></div><div id="cards"></div></section></main>
+<aside id="dr" role="dialog" aria-label="Record details" hidden></aside><div id="md" role="dialog" aria-modal="true" aria-label="Panel" hidden></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
+<script>
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const COL={openings:'#F59E0B',universities:'#3B82F6',supervisors:'#10B981'};
+const cv=v=>getComputedStyle(document.documentElement).getPropertyValue('--cv-'+v).trim()||COL[v];
+const NAME={openings:'Openings',universities:'Universities',supervisors:'Supervisors'};
+const ST=[['none','Not contacted','#9CA3AF'],['emailed','Emailed','#0EA5E9'],['replied','Replied','#8B5CF6'],['interview','Interview','#F97316'],['offer','Offer','#22C55E'],['declined','Declined','#EF4444']];
+const ink=h=>{const c=h.replace('#',''),[r,g,b]=[0,2,4].map(i=>{const v=parseInt(c.substr(i,2),16)/255;return v<=.03928?v/12.92:((v+.055)/1.055)**2.4});
+const L=.2126*r+.7152*g+.0722*b;return (L+.05)/.05>=1.05/(L+.05)?'#000':'#fff'};
+const TK='phdmap.tracker.v1',BK='phdmap.lastexport';
+let D={universities:[],supervisors:[],openings:[],lastUpdated:''},view='openings',F={open:true},T={},cur=null,mf='',msort='follow',lastD=null,lastM=null;
+const ls=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
+try{T=JSON.parse(ls(TK))||{}}catch(e){}
+const save=()=>{try{localStorage.setItem(TK,JSON.stringify(T))}catch(e){}};
+const today=()=>new Date().toISOString().slice(0,10);
+const days=d=>Math.round((Date.parse(d)-Date.parse(today()))/864e5);
+const isNew=r=>r.firstSeen&&days(r.firstSeen)>=-7;
+const U=id=>D.universities.find(u=>u.id===id),S=id=>D.supervisors.find(s=>s.id===id);
+const uni=r=>r.lat!=null?r:(U(r.universityId)||{});
+const find=id=>[...D.openings,...D.universities,...D.supervisors].find(r=>r.id===id);
+const typeOf=r=>D.openings.includes(r)?'openings':D.universities.includes(r)?'universities':'supervisors';
+const title=r=>r.title||r.name||r.id;
+const subs=r=>r.subfields||[...(S(r.supervisorId)?.subfields||[]),...(U(r.universityId)?.subfields||[])];
+const lnk=u=>/^https?:\/\//.test(u)?`<a href="${esc(u)}" target="_blank" rel="noopener">${esc(u.replace(/^https?:\/\/(www\.)?/,'').slice(0,60))}</a>`:esc(u);
+
+const map=L.map('map',{minZoom:3,maxBounds:[[28,-32],[74,52]]}).setView([52,12],4);
+let tl;const tiles=()=>{tl&&tl.remove();const d=matchMedia('(prefers-color-scheme:dark)').matches;
+tl=L.tileLayer(`https://{s}.basemaps.cartocdn.com/${d?'dark':'light'}_all/{z}/{x}/{y}{r}.png`,{attribution:'&copy; OpenStreetMap contributors &copy; CARTO',maxZoom:12}).addTo(map)};
+tiles();
+const cl=L.markerClusterGroup({maxClusterRadius:40}).addTo(map);
+const MK={};let hid=null;
+const sty=(m,on)=>m.setStyle(on?{radius:12,weight:3,color:getComputedStyle(document.body).color}:{radius:8,weight:1.5,color:'#fff'});
+function hl(id){if(hid&&MK[hid])sty(MK[hid],false);hid=id;if(id&&MK[id])sty(MK[id],true)}
+const setAc=()=>document.body.style.setProperty('--ac',cv(view));
+matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{tiles();setAc();render();if(cur){const r=find(cur);if(r)$('#dr').style.borderColor=cv(typeOf(r))}});
+
+const dl=r=>{if(r.status==='closed'||(r.deadline&&days(r.deadline)<0))return['Closed','x'];
+if(!r.deadline)return['Rolling',''];const d=days(r.deadline);return[d===0?'Due today':d===1?'1 day left':d+' days left',d<14?'r':'a']};
+function items(){const q=($('#q').value||'').toLowerCase();
+const a=D[view].filter(r=>{const u=uni(r);
+if(F.country&&F.country.length&&!F.country.includes(u.country))return 0;
+if(F.sub&&F.sub.length&&!subs(r).some(s=>F.sub.includes(s)))return 0;
+if(F.fund&&view!=='universities'&&!r.fundedProject)return 0;
+if(F.pt&&view==='universities'&&r.programType!==F.pt)return 0;
+if(F.new&&!isNew(r))return 0;
+if(F.take&&view==='supervisors'&&r.takingStudents!=='yes')return 0;
+if(view==='openings'){if(F.open&&dl(r)[0]==='Closed')return 0;
+if(F.dfrom&&(!r.deadline||r.deadline<F.dfrom))return 0;
+if(F.dto&&(!r.deadline||r.deadline>F.dto))return 0}
+if(q&&![title(r),r.group,u.name,u.city,u.country,subs(r).join(' ')].join(' ').toLowerCase().includes(q))return 0;return 1});
+const k=r=>dl(r)[0]==='Closed'?3:r.deadline?1:2;
+return a.sort(view==='openings'?(x,y)=>k(x)-k(y)||String(x.deadline).localeCompare(y.deadline):(x,y)=>title(x).localeCompare(title(y)))}
+
+const chip=id=>{const t=T[id];const s=t&&ST.find(x=>x[0]===t.status);return s&&s[0]!=='none'?`<span class="chip" style="background:${s[2]};color:${ink(s[2])}">${s[1]}</span>`:''};
+function card(r){const u=uni(r),t=T[r.id]||{};
+const sub=view==='openings'?`${u.name||''}, ${u.country||''}`:view==='universities'?`${r.city||''}, ${r.country||''}`:`${r.group||''}${r.group&&u.name?', ':''}${u.name||''}`;
+let b='';if(view==='openings'){const[x,c]=dl(r);b+=`<span class="bd ${c}">${x}</span>`}
+if(r.fundedProject)b+=`<span class="bd fp" title="Funded project">&#9670; ${esc(r.fundedProject)}</span>`;
+if(view==='universities'&&r.programType)b+=`<span class="bd">${esc(r.programType)}</span>`;
+if(isNew(r))b+='<span class="bd nw">NEW</span>';if(r.uncertain)b+='<span class="bd un">Uncertain</span>';
+return`<div class="card${r.id===cur?' sel':''}" data-id="${esc(r.id)}" tabindex="0" role="button"><b>${esc(title(r))}</b><small>${esc(sub)}</small><div>${b}${chip(r.id)}${t.notes||t.conv?'<span class="bd">Notes</span>':''}${t.follow&&days(t.follow)<=0?'<span class="bd r">Follow up</span>':''}</div></div>`}
+
+function render(){const a=items();$('#cnt').textContent=`${a.length} ${NAME[view].toLowerCase()}`;
+$('#cards').innerHTML=a.length?a.map(card).join(''):'<p class="emp">Nothing matches. Clear a filter or change the search.</p>';
+cl.clearLayers();Object.keys(MK).forEach(k=>delete MK[k]);hid=null;const ms=[];a.forEach(r=>{const u=uni(r);if(u.lat==null)return;
+const m=L.circleMarker([u.lat,u.lng],{radius:8,color:'#fff',weight:1.5,fillColor:cv(view),fillOpacity:.92}).on('click',()=>openD(r.id));MK[r.id]=m;ms.push(m)});
+cl.addLayers(ms);if(ms.length)map.fitBounds(cl.getBounds().pad(.25),{maxZoom:7});
+if(cur&&MK[cur])hl(cur)}
+
+function setView(v){view=v;setAc();
+$$('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+$$('[data-for]').forEach(e=>e.hidden=!e.dataset.for.split(' ').includes(v));render()}
+
+function filters(){const u=D.universities,all=[...D.openings,...D.universities,...D.supervisors];
+const uniq=a=>[...new Set(a)].filter(Boolean).sort();
+const msel=(k,label,a)=>`<fieldset class="ms"><legend>${label} <span data-n="${k}"></span></legend><div class="msl">${a.map(x=>`<label class="ck"><input type="checkbox" data-m="${k}" value="${esc(x)}">${esc(x)}</label>`).join('')||'<small>No data yet</small>'}</div></fieldset>`;
+$('#fo').innerHTML=msel('country','Country',uniq(u.map(x=>x.country)))+msel('sub','Topic',uniq(all.flatMap(r=>r.subfields||[])))+`
+<label data-for="universities">Program type<select data-k="pt"><option value="">All</option><option>structured</option><option>direct</option><option>both</option></select></label>
+<label data-for="openings">Deadline from<input type="date" data-k="dfrom"></label>
+<label data-for="openings">Deadline to<input type="date" data-k="dto"></label>
+<label class="ck" data-for="openings"><input type="checkbox" data-k="open" checked>Hide closed</label>
+<label class="ck" data-for="openings supervisors"><input type="checkbox" data-k="fund">Funded project only</label>
+<label class="ck" data-for="supervisors"><input type="checkbox" data-k="take">Taking students</label>
+<label class="ck"><input type="checkbox" data-k="new">New this week</label>
+<button id="cf" style="margin-top:12px">Clear filters</button>`;F={open:true};$$('[data-for]').forEach(e=>e.hidden=!e.dataset.for.split(' ').includes(view))}
+$('#fo').addEventListener('change',e=>{const m=e.target.dataset.m,k=e.target.dataset.k;
+if(m){F[m]=$$(`#fo input[data-m="${m}"]:checked`).map(i=>i.value);const n=$(`#fo [data-n="${m}"]`);if(n)n.textContent=F[m].length?`(${F[m].length} selected)`:'';render()}
+else if(k){F[k]=e.target.type==='checkbox'?e.target.checked:e.target.value;render()}});
+$('#fo').addEventListener('click',e=>{if(e.target.id==='cf'){filters();render()}});
+let qt;$('#q').addEventListener('input',()=>{clearTimeout(qt);qt=setTimeout(render,150)});
+
+function openD(id){const r=find(id);if(!r)return;const t=typeOf(r);if(t!==view)setView(t);
+if($('#dr').hidden){const a=document.activeElement;lastD={el:a,id:a&&a.closest?.('.card')?.dataset.id}}
+cur=id;
+const u=uni(r),tr=T[id]||{status:'none'},skip=['id','lat','lng','verified','uncertain','firstSeen','sourceUrl'];
+const rows=Object.entries(r).filter(([k,v])=>!skip.includes(k)&&!/Id$/.test(k)&&v!=null&&v!=='').map(([k,v])=>`<tr><th>${esc(k)}</th><td>${/url$/i.test(k)?lnk(v):esc(Array.isArray(v)?v.join(', '):v)}</td></tr>`).join('');
+const L2=(a,tp)=>a.length?`<h4>${NAME[tp]}</h4>`+a.map(x=>`<a href="#" class="lk" data-id="${esc(x.id)}">${esc(title(x))}</a>`).join(''):'';
+const rel=t==='universities'?L2(D.supervisors.filter(s=>s.universityId===id),'supervisors')+L2(D.openings.filter(o=>o.universityId===id),'openings')
+:t==='supervisors'?L2(U(r.universityId)?[U(r.universityId)]:[],'universities')+L2(D.openings.filter(o=>o.supervisorId===id),'openings')
+:L2(U(r.universityId)?[U(r.universityId)]:[],'universities')+L2(S(r.supervisorId)?[S(r.supervisorId)]:[],'supervisors');
+$('#dr').setAttribute('aria-label',title(r));
+$('#dr').style.borderColor=cv(t);$('#dr').innerHTML=`<button class="x1" id="xd" aria-label="Close">Close</button><h3 style="margin:0 0 6px">${esc(title(r))}</h3>
+${r.uncertain?'<p class="bd un">Uncertain, check the official page</p>':''}<small>Verified: ${esc(r.verified||'not stated')}${r.sourceUrl?', source: '+lnk(r.sourceUrl):''}</small>
+<table>${rows}</table>${rel}<h4>Tracker</h4>
+<select id="ts" aria-label="Status">${ST.map(s=>`<option value="${s[0]}"${s[0]===tr.status?' selected':''}>${s[1]}</option>`).join('')}</select>
+<label>Last contact<input type="date" id="tl" value="${esc(tr.last||'')}"></label><label>Follow-up date<input type="date" id="tf" value="${esc(tr.follow||'')}"></label>
+<textarea id="tn" rows="3" placeholder="Notes" aria-label="Notes">${esc(tr.notes||'')}</textarea>
+<textarea id="tc" rows="8" placeholder="Paste email conversations here" aria-label="Email conversations">${esc(tr.conv||'')}</textarea><small id="sv"></small>`;
+$('#dr').hidden=false;$('#dr').scrollTop=0;$('#xd').focus({preventScroll:true});
+$$('.card').forEach(c=>c.classList.toggle('sel',c.dataset.id===id));
+$(`.card[data-id="${CSS.escape(id)}"]`)?.scrollIntoView({block:'nearest'});
+const m=MK[id],fly=()=>{if(u.lat!=null)map.flyTo([u.lat,u.lng],Math.max(map.getZoom(),6),{duration:.6})};
+if(m)cl.zoomToShowLayer(m,()=>{hl(id);fly()});else fly()}
+const restore=(h,box)=>{if(!h)return;const a=document.activeElement;if(a&&a!==document.body&&!box.contains(a))return;
+const t=h.el&&document.contains(h.el)?h.el:(h.id&&$(`.card[data-id="${CSS.escape(h.id)}"]`));if(t&&t.focus)t.focus()};
+const closeD=()=>{if($('#dr').hidden)return;$('#dr').hidden=true;cur=null;hl(null);$$('.card.sel').forEach(c=>c.classList.remove('sel'));restore(lastD,$('#dr'))};
+$('#dr').addEventListener('click',e=>{if(e.target.id==='xd')closeD();const a=e.target.closest('.lk');if(a){e.preventDefault();openD(a.dataset.id)}});
+$('#dr').addEventListener('input',()=>{if(!cur)return;T[cur]={status:$('#ts').value,last:$('#tl').value,follow:$('#tf').value,notes:$('#tn').value,conv:$('#tc').value};
+save();$('#sv').textContent='Saved';const c=$(`.card[data-id="${CSS.escape(cur)}"]`);if(c){const r=find(cur);c.outerHTML=card(r)}upd()});
+$('#cards').addEventListener('click',e=>{const c=e.target.closest('.card');if(c)openD(c.dataset.id)});
+
+function openM(label,html,focusId){if($('#md').hidden){const a=document.activeElement;lastM={el:a,id:a&&a.closest?.('.card')?.dataset.id}}
+$('#md').setAttribute('aria-label',label);$('#md').innerHTML=html;$('#md').hidden=false;$('#'+(focusId||'xm'))?.focus({preventScroll:true})}
+const closeM=()=>{if($('#md').hidden)return;$('#md').hidden=true;restore(lastM,$('#md'))};
+
+function myT(focusId){const od=t=>!!(t.follow&&days(t.follow)<=0),key=t=>msort==='last'?(t.last||''):(t.follow||'');
+const es=Object.entries(T).filter(([,t])=>t.status!=='none'||t.notes||t.conv||t.follow||t.last).filter(([,t])=>!mf||t.status===mf)
+.sort((a,b)=>{const A=a[1],B=b[1],oa=od(A),ob=od(B);if(oa!==ob)return oa?-1:1;if(oa&&ob)return A.follow.localeCompare(B.follow);
+const ka=key(A),kb=key(B);if(!ka!==!kb)return ka?-1:1;if(!ka)return 0;return msort==='last'?kb.localeCompare(ka):ka.localeCompare(kb)});
+openM('My Tracker',`<button class="x1" id="xm">Close</button><h3 style="margin:0 0 8px">My Tracker</h3>
+<select id="mfs" aria-label="Filter by status"><option value="">All statuses</option>${ST.map(s=>`<option value="${s[0]}"${s[0]===mf?' selected':''}>${s[1]}</option>`).join('')}</select>
+<select id="mso" aria-label="Sort by"><option value="follow"${msort==='follow'?' selected':''}>Sort: follow-up date</option><option value="last"${msort==='last'?' selected':''}>Sort: last contact (newest first)</option></select>
+${es.length?es.map(([id,t])=>{const r=find(id);return`<div class="card" data-id="${esc(id)}" data-ok="${r?1:0}" tabindex="0" role="button"><b>${esc(r?title(r):id)}</b>${r?'':'<small>Record no longer listed</small>'}<div>${chip(id)}${t.follow?`<span class="bd ${days(t.follow)<=0?'r':''}">Follow-up ${esc(t.follow)}</span>`:''}${t.last?`<span class="bd">Last contact ${esc(t.last)}</span>`:''}</div></div>`}).join(''):'<p class="emp">Nothing tracked yet. Open any record and set a status or add notes.</p>'}`,focusId)}
+function helpP(){const vc=['openings','universities','supervisors'].map(v=>`<span class="chip" style="background:${cv(v)};color:#111">${NAME[v]}</span>`).join('');
+const sc=ST.map(s=>`<span class="chip" style="background:${s[2]};color:${ink(s[2])}">${s[1]}</span>`).join('');
+openM('Help',`<button class="x1" id="xm">Close</button><h3 style="margin:0 0 8px">Help</h3>
+<h4>The three views</h4><ul><li><b>Openings</b>: advertised PhD positions, soonest deadline first.</li><li><b>Universities</b>: institutes and their programmes (structured, direct or both).</li><li><b>Supervisors</b>: people you can email directly, even without an advertised opening.</li></ul>
+<p>Pins on the map follow the current view. Filters and the search box change the list, the pins and the count together. Click a card to highlight its pin, or click a pin to open its details.</p>
+<h4>What the colours mean</h4><p>Views: ${vc}</p><p>Your contact status: ${sc}</p>
+<h4>Badges</h4><ul><li><span class="bd nw">NEW</span> first listed in the last 7 days.</li><li><span class="bd un">Uncertain</span> some detail could not be confirmed: check the official page.</li><li><span class="bd a">12 days left</span> amber, or <span class="bd r">5 days left</span> red when under 14 days; <b>Due today</b> is red too.</li><li><b>Rolling</b> means no fixed deadline. <span class="bd x">Closed</span> means the deadline has passed or the position is filled.</li><li><span class="bd fp">&#9670; Marie Curie</span> a funded project, doctoral network or programme.</li></ul>
+<h4>The tracker</h4><p>Open any record and use the Tracker section to set a status (Not contacted, Emailed, Replied, Interview, Offer, Declined), write notes, paste email conversations, and set last-contact and follow-up dates. It saves automatically. A bell-style <span class="bd r">Follow up</span> badge appears when a follow-up date is today or past. <b>My Tracker</b> lists everything you have touched, with overdue follow-ups first.</p>
+<h4>Where your notes live</h4><p>Notes, statuses and conversations are stored <b>only in this browser on this device</b>. They are not on the website and are lost if you clear browser data or switch devices.</p>
+<h4>Backups</h4><p>Use <b>Export backup</b> regularly (a reminder appears after 14 days) and <b>Import backup</b> to restore on a new browser or device.</p>`)}
+$('#md').addEventListener('click',e=>{if(e.target.id==='xm')closeM();const c=e.target.closest('.card');if(c&&c.dataset.ok==='1'){closeM();openD(c.dataset.id)}});
+$('#md').addEventListener('change',e=>{if(e.target.id==='mfs'){mf=e.target.value;myT('mfs')}else if(e.target.id==='mso'){msort=e.target.value;myT('mso')}});
+$('#bt').onclick=()=>myT();$('#bh').onclick=helpP;
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('#md').hidden)closeM();else closeD()}
+else if(e.key==='Enter'&&e.target.classList&&e.target.classList.contains('card')){e.preventDefault();e.target.click()}});
+
+$('#be').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({version:1,tracker:T},null,1)],{type:'application/json'}));
+a.download=`phdmap-backup-${today()}.json`;a.click();try{localStorage.setItem(BK,today())}catch(e){}upd()};
+const readJ=(f,cb)=>{const r=new FileReader();r.onload=()=>{try{cb(JSON.parse(r.result))}catch(e){alert('That file is not valid JSON. Choose a file exported from this site.')}};r.readAsText(f)};
+$('#ib').onchange=e=>{const f=e.target.files[0];if(f)readJ(f,j=>{const n=j.tracker;if(!n||typeof n!=='object')return alert('This is not a PhD Map backup file.');
+const keys=Object.keys(n),clash=keys.filter(k=>T[k]);let ow=true;if(clash.length)ow=confirm(`${clash.length} entries already exist here. Overwrite them with the backup?`);
+keys.forEach(k=>{if(!T[k]||ow)T[k]=n[k]});save();render();upd()});e.target.value=''};
+$('#id').onchange=e=>{const f=e.target.files[0];if(f)readJ(f,j=>{if(!j.universities||!j.supervisors||!j.openings)return alert('This file needs universities, supervisors and openings lists.');load(j)});e.target.value=''};
+
+function upd(){const n=[...D.openings,...D.supervisors].filter(isNew).length,l=ls(BK);
+const need=Object.keys(T).length&&(!l||days(l)<-14);
+$('#meta').textContent=`Data updated: ${D.lastUpdated||'not stated'}. New this week: ${n}.${need?' Export a backup of your tracker.':''}`}
+function load(j){D={lastUpdated:j.lastUpdated||'',universities:j.universities||[],supervisors:j.supervisors||[],openings:j.openings||[]};
+$('#ban').hidden=true;filters();upd();setView(view)}
+$('#tabs').innerHTML=Object.keys(NAME).map(v=>`<button data-v="${v}" style="--c:var(--cv-${v})">${NAME[v]}</button>`).join('');
+$('#tabs').addEventListener('click',e=>{const v=e.target.dataset.v;if(v){closeD();setView(v)}});
+$('#fl').open=innerWidth>900;
+fetch('data.json?t='+Date.now()).then(r=>{if(!r.ok)throw 0;return r.json()}).then(load).catch(()=>{
+$('#ban').hidden=false;$('#ban').textContent='Could not load data.json. Use Import data to load it from a file, or serve this folder with a local web server.';filters();setView(view)});
+</script></body></html>
