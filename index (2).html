@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PhD Map</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<style>
+:root{--bg:#f6f5f1;--fg:#1d1d1b;--mut:#66665f;--card:#fff;--bd:#dedcd4}
+@media(prefers-color-scheme:dark){:root{--bg:#171715;--fg:#ecebe6;--mut:#9b9a93;--card:#232321;--bd:#3b3b37}}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font:14px/1.45 system-ui,sans-serif;background:var(--bg);color:var(--fg);display:flex;flex-direction:column}
+header{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 12px;background:var(--card);border-bottom:1px solid var(--bd)}
+h1{font-size:17px;margin:0 6px 0 0}
+button,select,input,textarea{font:inherit;color:var(--fg);background:var(--card);border:1px solid var(--bd);border-radius:6px;padding:6px 9px;min-height:36px}
+button{cursor:pointer}
+.tab.on{color:#111;font-weight:700;text-decoration:underline}
+#tabs{display:inline-flex;gap:6px;flex-wrap:wrap}
+:focus-visible{outline:3px solid #2563eb;outline-offset:2px}
+@media(prefers-color-scheme:dark){:focus-visible{outline-color:#93c5fd}}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+#warn{padding:8px 12px;background:#e0e7ff;color:#111;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#ban{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#ban[hidden],#warn[hidden]{display:none}
+#ban button,#warn button{color:#111;background:#fff;border-color:#111}
+#chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 8px}
+#chips:empty{display:none}
+.chip{min-height:30px;padding:2px 9px;border-radius:15px}
+#sv.err{color:#b91c1c;font-weight:600}
+@media(prefers-color-scheme:dark){#sv.err{color:#fca5a5}}
+.dim{color:var(--mut);font-style:italic}
+.pop{max-height:260px;overflow:auto;overflow-wrap:anywhere}
+.pop b{display:block;margin-top:4px}
+path.leaflet-interactive:focus{stroke:#000;stroke-width:4}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+@media(pointer:coarse){button,select,input,textarea{min-height:44px}}
+#q{flex:1;min-width:140px}
+#info{width:100%;font-size:12px;color:var(--mut)}
+#ban{padding:8px 12px;background:#fde68a;color:#111}
+main{flex:1;min-height:0;display:grid;grid-template-columns:1fr 400px}
+#map{background:#cfd8e3;min-height:280px}
+#side{display:flex;flex-direction:column;min-height:0;border-left:1px solid var(--bd)}
+#filters{display:flex;flex-wrap:wrap;gap:6px;padding:8px;border-bottom:1px solid var(--bd);align-items:center}
+#filters label{display:flex;gap:4px;align-items:center;font-size:13px}
+#filters select{max-width:48%}
+#cnt{padding:6px 10px;color:var(--mut);font-weight:600}
+#list{overflow:auto;flex:1}
+.card{margin:6px 8px;padding:10px;background:var(--card);border:1px solid var(--bd);border-left:5px solid var(--c);border-radius:8px;cursor:pointer}
+.card{overflow-wrap:anywhere}.card b{display:block}.card small{color:var(--mut)}
+.bd{display:inline-block;max-width:100%;font-size:11px;padding:1px 8px;border-radius:9px;margin:5px 4px 0 0;background:var(--bd);overflow-wrap:anywhere;vertical-align:top}
+.red{background:#DC2626;color:#fff}.amb{background:#F59E0B;color:#111}.org{background:#F97316;color:#111}.fp{background:#EDE9FE;color:#4C1D95}.grey{background:var(--bd);color:var(--fg);text-decoration:line-through}
+#dr{position:fixed;top:0;right:0;bottom:0;width:420px;max-width:100%;background:var(--card);padding:14px;overflow:auto;z-index:1200;box-shadow:0 0 18px #0005;border-left:5px solid var(--c)}
+#dr table{border-collapse:collapse;width:100%}
+#dr th{text-align:left;color:var(--mut);font-weight:400;padding:3px 8px 3px 0;vertical-align:top;width:7.5em}
+#dr td{overflow-wrap:anywhere;padding:3px 0}
+#dr h3{overflow-wrap:anywhere}
+#dr a{color:#2563eb;word-break:break-all}
+@media(prefers-color-scheme:dark){#dr a{color:#7db2ff}}
+#dr textarea,#dr select,#dr input{width:100%;margin:3px 0 8px;font-size:16px}
+#q{font-size:16px}
+.lk{display:block;padding:3px 0}
+.pop a{display:block;padding:2px 0;color:#2563eb}
+.empty{padding:14px;color:var(--mut)}
+.leaflet-tooltip.cnt{background:transparent;border:0;box-shadow:none;color:#111;font-weight:700}
+.leaflet-tooltip.cnt:before{display:none}
+.map-msg{padding:14px}
+@media(max-width:850px){
+html,body{height:auto;min-height:100%}
+main{flex:none;grid-template-columns:1fr;grid-template-rows:minmax(240px,40vh) auto}
+#side{border-left:0;border-top:1px solid var(--bd)}
+#list{max-height:60vh}
+#filters select{max-width:100%;flex:1 1 40%}
+#dr{top:auto;left:0;width:auto;max-height:80vh;max-height:80dvh;border-left:0;border-top:5px solid var(--c);padding-bottom:calc(14px + env(safe-area-inset-bottom,0px))}}
+</style></head><body>
+<header>
+ <h1>PhD Map</h1>
+ <span id="tabs" role="tablist" aria-label="Record type"></span>
+ <input id="q" type="search" aria-label="Search records" placeholder="Search names, groups, cities, topics">
+ <button id="bt">My Tracker</button>
+ <button id="be">Export backup</button>
+ <button id="bi">Import backup</button><input id="fi" type="file" accept=".json" hidden>
+ <div id="info"></div>
+</header>
+<div id="ban" role="alert" hidden></div>
+<div id="warn" role="status" hidden></div>
+<main>
+ <div id="map" role="region" aria-label="Map of record locations. The list beside the map holds the same records and is fully keyboard accessible."></div>
+ <section id="side" role="tabpanel">
+  <div id="filters"></div>
+  <div id="chips" aria-label="Active filters"></div>
+  <div id="cnt" role="status" aria-live="polite"></div>
+  <div id="list" role="group" aria-label="Results"></div>
+ </section>
+</main>
+<aside id="dr" role="dialog" aria-modal="false" aria-labelledby="dt" hidden></aside>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script>
+"use strict";
+var $=function(s){return document.querySelector(s)};
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+var VIEWS={openings:['Openings','#F59E0B'],universities:['Universities','#3B82F6'],supervisors:['Supervisors','#10B981']};
+var STATUS=[['none','Not contacted'],['emailed','Emailed'],['replied','Replied'],['interview','Interview'],['offer','Offer'],['declined','Declined']];
+var LABELS={phdProgramUrl:'PhD programme page',url:'Website',applyUrl:'Apply link',staffPageUrl:'Staff page',deadlineNote:'Deadline note',fundedProject:'Funded project / grant',takingStudents:'Taking students',programType:'Programme type',datePosted:'Date posted'};
+var REQUIRED={universities:['funding','deadlineNote'],openings:['deadline','funding'],supervisors:[]};
+var TK='phdmap.tracker.v1';
+var D={universities:[],supervisors:[],openings:[]},view='openings',cur=null,status='loading',lastFocus=null,openerId=null,dataSource='data.json';
+var F={country:'',topic:'',hideClosed:true,funded:false,taking:false};
+var reduced=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- helpers ---------- */
+function has(o,k){return Object.prototype.hasOwnProperty.call(o,k)}
+function today(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function validDate(s){return typeof s==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(s)&&!isNaN(Date.parse(s))}
+function days(d){return Math.round((Date.parse(d)-Date.parse(today()))/864e5)}
+function norm(s){return String(s==null?'':s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()}
+function short(s,n){s=String(s);return s.length>n?s.slice(0,n-1)+'\u2026':s}
+function nice(k){if(LABELS[k])return LABELS[k];var t=k.replace(/([A-Z])/g,function(c){return' '+c.toLowerCase()});return t.charAt(0).toUpperCase()+t.slice(1)}
+function joinNE(a,sep){return a.filter(function(x){return x}).join(sep)}
+function uniOf(r){return typeof r.lat==='number'?r:(D.universities.find(function(u){return u.id===r.universityId})||{})}
+function byId(id){return D.openings.concat(D.universities,D.supervisors).find(function(r){return r.id===id})}
+function typeOf(r){return D.openings.indexOf(r)>=0?'openings':D.universities.indexOf(r)>=0?'universities':'supervisors'}
+function title(r){return r.title||r.name||r.id}
+function topics(r){return r.subfields||[]}
+function link(u){return/^https?:\/\//.test(u||'')?'<a href="'+esc(u)+'" target="_blank" rel="noopener">'+esc(u.replace(/^https?:\/\/(www\.)?/,'').slice(0,60))+'</a>':esc(u)}
+function isMissing(v){return v==null||v===''}
+function deadline(r){
+ if(r.status==='closed')return['Closed','grey',3];
+ if(!validDate(r.deadline))return['No deadline stated','',2];
+ var n=days(r.deadline);
+ if(n<0)return['Deadline passed ('+r.deadline+')','grey',3];
+ return[(n===0?'Due today':n+(n===1?' day left':' days left'))+' \u00b7 '+r.deadline,n<14?'red':'amb',1]}
+
+/* ---------- tracker storage ---------- */
+var T={},storeOK=true,loadWarn='';
+(function(){
+ var raw=null;
+ try{raw=localStorage.getItem(TK)}catch(e){storeOK=false;loadWarn='Browser storage is unavailable, so tracker changes cannot be saved on this device. Use Export backup to keep them.';return}
+ if(raw==null)return;
+ try{var p=JSON.parse(raw);if(!p||typeof p!=='object'||Array.isArray(p))throw 0;T=p}
+ catch(e){var kept=false;try{localStorage.setItem(TK+'.corrupt-'+Date.now(),raw);kept=true}catch(e2){}
+  loadWarn='Your saved tracker data could not be read. '+(kept?'A raw copy was kept in browser storage under "'+TK+'.corrupt-\u2026". ':'A raw copy could not be kept. ')+'The tracker is empty for now; your next edit will replace the unreadable entry.'}
+})();
+function ent(id){var t=has(T,id)?T[id]:null;return t&&typeof t==='object'&&!Array.isArray(t)?t:{}}
+function saveT(){
+ var s=JSON.stringify(T);
+ try{localStorage.setItem(TK,s);if(localStorage.getItem(TK)!==s)throw new Error('the browser did not keep the data');storeOK=true;return{ok:true}}
+ catch(e){storeOK=false;return{ok:false,err:(e&&e.name==='QuotaExceededError')?'browser storage is full':((e&&e.message)||'storage unavailable')}}}
+function msg(t){var w=$('#warn');if(!t){w.hidden=true;w.textContent='';return}
+ w.textContent='';var sp=document.createElement('span');sp.textContent=t;var b=document.createElement('button');b.id='wx';b.textContent='Dismiss';w.appendChild(sp);w.appendChild(b);w.hidden=false}
+$('#warn').addEventListener('click',function(e){if(e.target.id==='wx')msg('')});
+
+function dueInfo(){
+ var o=[],d=[],u=[];
+ Object.keys(T).forEach(function(k){var t=ent(k);if(!validDate(t.follow))return;var n=days(t.follow);(n<0?o:n===0?d:u).push(k)});
+ var by=function(a,b){return ent(a).follow.localeCompare(ent(b).follow)};
+ return{over:o.sort(by),due:d,up:u.sort(by)}}
+function updateBt(){
+ var i=dueInfo(),n=i.over.length+i.due.length,b=$('#bt');
+ b.textContent='My Tracker'+(n?' ('+n+' due)':'');
+ b.setAttribute('aria-label','My Tracker'+(n?': '+i.over.length+' overdue and '+i.due.length+' due today':''))}
+
+/* ---------- map: OpenStreetMap tiles (no key). Falls back to Esri, and pins work even with no tiles ---------- */
+var HAS_MAP=typeof L!=='undefined',map=null,layer=null,tl=null,tileFails=0,usingFallback=false,kbdOpen=false;
+if(HAS_MAP){
+ map=L.map('map',{minZoom:3,maxBounds:[[28,-32],[74,52]],zoomAnimation:!reduced,fadeAnimation:!reduced,markerZoomAnimation:!reduced}).setView([52,12],4);
+ var addTiles=function(url,att){
+  if(tl)tl.remove();tileFails=0;
+  tl=L.tileLayer(url,{attribution:att,maxZoom:15}).addTo(map);
+  tl.on('tileerror',function(){
+   tileFails++;
+   if(tileFails===6&&!usingFallback){usingFallback=true;
+    addTiles('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}','Tiles &copy; Esri')}
+  })};
+ addTiles('https://tile.openstreetmap.org/{z}/{x}/{y}.png','&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors');
+ layer=L.layerGroup().addTo(map);
+ if(window.ResizeObserver)new ResizeObserver(function(){map.invalidateSize()}).observe($('#map'));
+ else window.addEventListener('resize',function(){map.invalidateSize()});
+}else{$('#map').innerHTML='<p class="map-msg">The map library could not be loaded (check your connection). The list still works.</p>'}
+
+/* ---------- filtering ---------- */
+function items(skipClosed){
+ var terms=norm($('#q').value).split(/\s+/).filter(Boolean);
+ var a=D[view].filter(function(r){
+  var u=uniOf(r);
+  if(F.country&&u.country!==F.country)return false;
+  if(F.topic&&topics(r).indexOf(F.topic)<0&&!(view==='openings'&&topics(u).indexOf(F.topic)>=0))return false;
+  if(F.funded&&view!=='universities'&&!r.fundedProject)return false;
+  if(F.taking&&view==='supervisors'&&r.takingStudents!=='yes')return false;
+  if(view==='openings'&&F.hideClosed&&!skipClosed&&deadline(r)[2]===3)return false;
+  if(terms.length){
+   var sup=view==='openings'&&r.supervisorId?(D.supervisors.find(function(s){return s.id===r.supervisorId})||{}):{};
+   var hay=norm([title(r),r.group,u.name,u.city,u.country,sup.name,topics(r).join(' '),view==='openings'?topics(u).join(' '):''].join(' '));
+   for(var i=0;i<terms.length;i++)if(hay.indexOf(terms[i])<0)return false}
+  return true});
+ if(view==='openings')a.sort(function(x,y){var k=deadline(x)[2]-deadline(y)[2];return k||String(x.deadline||'9999').localeCompare(String(y.deadline||'9999'))||title(x).localeCompare(title(y))});
+ else a.sort(function(x,y){return title(x).localeCompare(title(y))});
+ return a}
+
+function renderFilters(){
+ var uniq=function(a){return a.filter(function(v,i){return v&&a.indexOf(v)===i}).sort()};
+ var countries=uniq(D.universities.map(function(u){return u.country}));
+ var tops=uniq([].concat.apply([],D.universities.concat(D.supervisors).map(topics)));
+ var opt=function(a,sel,all){return'<option value="">'+all+'</option>'+a.map(function(x){return'<option'+(x===sel?' selected':'')+'>'+esc(x)+'</option>'}).join('')};
+ $('#filters').innerHTML=
+  '<select id="fc" aria-label="Country">'+opt(countries,F.country,'All countries')+'</select>'+
+  '<select id="ft" aria-label="Topic">'+opt(tops,F.topic,'All topics')+'</select>'+
+  (view==='openings'?'<label><input type="checkbox" id="fh"'+(F.hideClosed?' checked':'')+'>Hide closed / passed</label>':'')+
+  (view!=='universities'?'<label title="Only records with a named funding source or grant in the data"><input type="checkbox" id="ff"'+(F.funded?' checked':'')+'>Named funding source</label>':'')+
+  (view==='supervisors'?'<label><input type="checkbox" id="fk"'+(F.taking?' checked':'')+'>Taking students</label>':'')+
+  '<button id="fx">Clear all</button>'}
+function activeChips(){
+ var c=[],q=$('#q').value.trim();
+ if(q)c.push(['q','Search: '+short(q,24)]);
+ if(F.country)c.push(['country','Country: '+F.country]);
+ if(F.topic)c.push(['topic','Topic: '+F.topic]);
+ if(view!=='universities'&&F.funded)c.push(['funded','Named funding source']);
+ if(view==='supervisors'&&F.taking)c.push(['taking','Taking students']);
+ if(view==='openings'&&!F.hideClosed)c.push(['closed','Including closed / passed']);
+ return c}
+function renderChips(){
+ var c=activeChips();
+ $('#chips').innerHTML=c.length?'<span class="sr-only">Active filters:</span>'+c.map(function(x){return'<button class="chip" data-k="'+x[0]+'" aria-label="Remove filter: '+esc(x[1])+'">'+esc(x[1])+' \u2715</button>'}).join(''):''}
+function resetKey(k){
+ if(k==='q')$('#q').value='';else if(k==='country')F.country='';else if(k==='topic')F.topic='';
+ else if(k==='funded')F.funded=false;else if(k==='taking')F.taking=false;else if(k==='closed')F.hideClosed=true}
+function afterReset(){renderFilters();render();var f=$('#fc');if(f)f.focus()}
+$('#chips').addEventListener('click',function(e){var b=e.target.closest('.chip');if(b){resetKey(b.getAttribute('data-k'));afterReset()}});
+$('#filters').addEventListener('change',function(e){
+ var id=e.target.id;
+ if(id==='fc')F.country=e.target.value;
+ else if(id==='ft')F.topic=e.target.value;
+ else if(id==='fh')F.hideClosed=e.target.checked;
+ else if(id==='ff')F.funded=e.target.checked;
+ else if(id==='fk')F.taking=e.target.checked;
+ render()});
+$('#filters').addEventListener('click',function(e){
+ if(e.target.id==='fx'){F={country:'',topic:'',hideClosed:true,funded:false,taking:false};$('#q').value='';afterReset()}});
+var qt;$('#q').addEventListener('input',function(){clearTimeout(qt);qt=setTimeout(render,150)});
+
+/* ---------- rendering ---------- */
+function statusChip(id){var t=ent(id);if(!t.status||t.status==='none')return'';
+ var s=STATUS.filter(function(x){return x[0]===t.status})[0];return s?'<span class="bd org">'+esc(s[1])+'</span>':''}
+function fundBadge(r){
+ if(view==='universities')return isMissing(r.funding)?'<span class="bd dim">Funding not stated</span>':'';
+ if(r.fundedProject)return'<span class="bd fp" title="'+esc(r.fundedProject)+'">'+(view==='openings'?'Funding: ':'Grant: ')+esc(short(r.fundedProject,60))+'</span>';
+ if(view==='openings')return isMissing(r.funding)?'<span class="bd dim">Funding not stated</span>':'<span class="bd">Funding: see details</span>';
+ return''}
+function card(r){
+ var u=uniOf(r),sub=view==='openings'?joinNE([u.name,u.country],', '):view==='universities'?joinNE([r.city,r.country],', '):joinNE([r.group,u.name],', ');
+ var b='';
+ if(view==='openings'){var d=deadline(r);b+='<span class="bd '+d[1]+'">'+esc(d[0])+'</span>'}
+ b+=fundBadge(r);
+ if(view==='universities'&&r.programType)b+='<span class="bd">Route: '+esc(r.programType)+'</span>';
+ if(view==='supervisors'&&r.takingStudents==='yes')b+='<span class="bd amb">Taking students</span>';
+ if(view==='supervisors'&&r.takingStudents==='no')b+='<span class="bd">Not taking students</span>';
+ if(r.uncertain)b+='<span class="bd org">Uncertain</span>';
+ var t=ent(r.id);
+ if(validDate(t.follow)){var n=days(t.follow);if(n<0)b+='<span class="bd red">Follow-up overdue</span>';else if(n===0)b+='<span class="bd red">Follow-up due today</span>'}
+ return'<div class="card" role="button" data-id="'+esc(r.id)+'" style="--c:'+VIEWS[view][1]+'" tabindex="0"><b>'+esc(title(r))+'</b><small>'+esc(sub)+'</small><div>'+b+statusChip(r.id)+'</div></div>'}
+
+function render(fit){
+ if(fit===undefined)fit=true;
+ if(status!=='ready'){
+  $('#cnt').textContent=status==='loading'?'Loading data\u2026':'Data not loaded';
+  $('#list').innerHTML='<p class="empty">'+(status==='loading'?'Loading the catalogue\u2026':'Records are unavailable until the data loads. Use Retry above.')+'</p>';
+  $('#chips').innerHTML='';if(layer)layer.clearLayers();return}
+ var a=items(),name=VIEWS[view][0].toLowerCase();
+ var hiddenClosed=view==='openings'&&F.hideClosed?items(true).length-a.length:0;
+ var groups={},keys=[],unmapped=0;
+ a.forEach(function(r){var u=uniOf(r);
+  if(typeof u.lat!=='number'||typeof u.lng!=='number'){unmapped++;return}
+  var k=u.lat.toFixed(2)+','+u.lng.toFixed(2);
+  if(!groups[k]){groups[k]={lat:u.lat,lng:u.lng,rs:[]};keys.push(k)}
+  groups[k].rs.push(r)});
+ $('#cnt').textContent=a.length+' of '+D[view].length+' '+name+(hiddenClosed?' ('+hiddenClosed+' closed or passed hidden)':'')+(unmapped?' \u00b7 '+unmapped+' without a map location':'');
+ renderChips();
+ $('#list').innerHTML=a.length?a.map(card).join(''):'<p class="empty">Nothing matches. Remove a filter chip or use Clear all.</p>';
+ if(!map)return;
+ layer.clearLayers();
+ var pts=[];
+ keys.forEach(function(k){
+  var g=groups[k],n=g.rs.length,byU={},order=[];
+  g.rs.forEach(function(r){var u=uniOf(r),id=u.id||'?';if(!byU[id]){byU[id]={name:u.name||'',rs:[]};order.push(id)}byU[id].rs.push(r)});
+  var m=L.circleMarker([g.lat,g.lng],{radius:Math.min(9+Math.sqrt(n)*3,24),color:'#fff',weight:1.5,fillColor:VIEWS[view][1],fillOpacity:.9});
+  var pop=document.createElement('div');pop.className='pop';
+  pop.innerHTML=order.map(function(id){return'<b>'+esc(byU[id].name)+'</b>'+byU[id].rs.map(function(r){return'<a href="#" data-id="'+esc(r.id)+'">'+esc(title(r))+'</a>'}).join('')}).join('');
+  pop.addEventListener('click',function(e){var id=e.target.getAttribute&&e.target.getAttribute('data-id');if(id){e.preventDefault();openD(id)}});
+  m.bindPopup(pop,{maxHeight:260});
+  m.on('popupopen',function(e){if(kbdOpen){kbdOpen=false;var a1=e.popup.getElement().querySelector('a');if(a1)a1.focus()}});
+  if(n>1)m.bindTooltip(String(n),{permanent:true,direction:'center',className:'cnt'});
+  m.addTo(layer);
+  var el=m.getElement&&m.getElement();
+  if(el){el.setAttribute('tabindex','0');el.setAttribute('role','button');
+   el.setAttribute('aria-label',joinNE(order.map(function(id){return byU[id].name}),'; ')+': '+n+' '+(n===1?VIEWS[view][0].replace(/s$/,'').toLowerCase():name)+'. Press Enter to list them.');
+   el.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();kbdOpen=true;m.openPopup()}})}
+  pts.push([g.lat,g.lng])});
+ if(fit&&pts.length)map.fitBounds(pts,{padding:[30,30],maxZoom:7,animate:!reduced})}
+
+function setView(v,o){
+ o=o||{};view=v;
+ if(!o.keepDrawer)closeD(true);
+ $('#tabs').innerHTML=Object.keys(VIEWS).map(function(k){var on=k===v;
+  return'<button role="tab" id="tab-'+k+'" class="tab'+(on?' on':'')+'" data-v="'+k+'" aria-selected="'+on+'" aria-controls="side" tabindex="'+(on?0:-1)+'" style="'+(on?'background:'+VIEWS[k][1]+';border-color:'+VIEWS[k][1]:'')+'">'+VIEWS[k][0]+'</button>'}).join('');
+ $('#side').setAttribute('aria-labelledby','tab-'+v);
+ renderFilters();render(o.fit!==false)}
+$('#tabs').addEventListener('click',function(e){var v=e.target.getAttribute('data-v');if(v&&v!==view){setView(v);$('#tab-'+v).focus()}});
+$('#tabs').addEventListener('keydown',function(e){
+ var ks=Object.keys(VIEWS),i=ks.indexOf(view),n=-1;
+ if(e.key==='ArrowRight')n=(i+1)%ks.length;else if(e.key==='ArrowLeft')n=(i+ks.length-1)%ks.length;
+ else if(e.key==='Home')n=0;else if(e.key==='End')n=ks.length-1;
+ if(n>=0){e.preventDefault();setView(ks[n]);$('#tab-'+ks[n]).focus()}});
+$('#list').addEventListener('click',function(e){var c=e.target.closest('.card');if(c)openD(c.dataset.id)});
+$('#list').addEventListener('keydown',function(e){
+ if(e.key==='Enter'||e.key===' '){var c=e.target.closest('.card');if(c&&e.target===c){e.preventDefault();openD(c.dataset.id)}}});
+
+/* ---------- detail drawer + tracker ---------- */
+function showD(html,color){
+ var dr=$('#dr');
+ if(dr.hidden)lastFocus=document.activeElement;
+ dr.style.setProperty('--c',color);dr.innerHTML=html;dr.hidden=false;dr.scrollTop=0;
+ var h=$('#dt');if(h)h.focus({preventScroll:true})}
+function closeD(noRestore){
+ var dr=$('#dr');if(dr.hidden)return;
+ dr.hidden=true;cur=null;
+ var f=lastFocus,id=openerId;lastFocus=null;openerId=null;
+ if(noRestore)return;
+ if(f&&f!==document.body&&document.contains(f)){try{f.focus();return}catch(e){}}
+ var cards=document.querySelectorAll('#list .card'),i;
+ for(i=0;i<cards.length;i++)if(cards[i].dataset.id===id){cards[i].focus();return}
+ if(cards[0])cards[0].focus();else $('#bt').focus()}
+function showOnMap(u){
+ if(!map||typeof u.lat!=='number'||typeof u.lng!=='number')return;
+ var p=L.latLng(u.lat,u.lng);
+ if(map.getZoom()<5||!map.getBounds().pad(-0.1).contains(p))map.setView(p,Math.max(map.getZoom(),5),{animate:!reduced})}
+function openD(id){
+ var r=byId(id);if(!r)return;
+ if($('#dr').hidden)openerId=id;
+ var t=typeOf(r);if(t!==view)setView(t,{keepDrawer:true,fit:false});
+ cur=id;var u=uniOf(r),tr=ent(id);
+ var skip=['id','lat','lng','verified','uncertain','firstSeen','sourceUrl'];
+ var keys=Object.keys(r).filter(function(k){return skip.indexOf(k)<0&&!/Id$/.test(k)&&!isMissing(r[k])});
+ REQUIRED[t].forEach(function(k){if(isMissing(r[k])&&keys.indexOf(k)<0)keys.push(k)});
+ var rows=keys.map(function(k){
+  var v=r[k];
+  return'<tr><th scope="row">'+esc(nice(k))+'</th><td>'+(isMissing(v)?'<span class="dim">Not stated</span>':/url$/i.test(k)?link(v):esc(Array.isArray(v)?v.join(', '):v))+'</td></tr>'}).join('');
+ var lk=function(h,arr){return arr.length?'<h4>'+h+'</h4>'+arr.map(function(x){return'<a href="#" class="lk" data-id="'+esc(x.id)+'">'+esc(title(x))+'</a>'}).join(''):''};
+ var uni=D.universities.filter(function(x){return x.id===r.universityId}),rel;
+ if(t==='universities')rel=lk('Supervisors',D.supervisors.filter(function(s){return s.universityId===id}))+lk('Openings',D.openings.filter(function(o){return o.universityId===id}));
+ else if(t==='supervisors')rel=lk('University',uni)+lk('Openings',D.openings.filter(function(o){return o.supervisorId===id}));
+ else rel=lk('University',uni)+lk('Supervisor',D.supervisors.filter(function(s){return s.id===r.supervisorId}));
+ showD('<button id="xd" style="float:right">Close</button><h3 id="dt" tabindex="-1" style="margin:0 0 6px">'+esc(title(r))+'</h3>'+
+  (r.uncertain?'<p><span class="bd org">Uncertain, check the official page</span></p>':'')+
+  '<small>Verified: '+esc(r.verified||'not stated')+(r.sourceUrl?' &middot; source: '+link(r.sourceUrl):'')+'</small>'+
+  '<table>'+rows+'</table>'+rel+
+  '<h4>Tracker</h4><label>Status<select id="ts">'+STATUS.map(function(s){return'<option value="'+s[0]+'"'+(s[0]===(tr.status||'none')?' selected':'')+'>'+s[1]+'</option>'}).join('')+'</select></label>'+
+  '<label>Last contact<input type="date" id="tl" value="'+esc(validDate(tr.last)?tr.last:'')+'"></label>'+
+  '<label>Follow-up date<input type="date" id="tf" value="'+esc(validDate(tr.follow)?tr.follow:'')+'"></label>'+
+  '<label>Notes<textarea id="tn" rows="3" placeholder="Notes">'+esc(tr.notes||'')+'</textarea></label>'+
+  '<label>Email conversations<textarea id="tc" rows="7" placeholder="Paste email conversations here">'+esc(tr.conv||'')+'</textarea></label>'+
+  '<small id="sv" role="status" aria-live="polite">'+(storeOK?'':'Warning: browser storage is not working; changes are not being saved.')+'</small>',VIEWS[t][1]);
+ showOnMap(u)}
+$('#dr').addEventListener('click',function(e){
+ if(e.target.id==='xd')closeD();
+ var a=e.target.closest('.lk');if(a){e.preventDefault();openD(a.dataset.id)}});
+$('#dr').addEventListener('input',function(){
+ if(!cur||!$('#ts'))return;
+ var o={},old=ent(cur);Object.keys(old).forEach(function(k){if(k!=='__proto__')o[k]=old[k]});
+ o.status=$('#ts').value;o.last=$('#tl').value;o.follow=$('#tf').value;o.notes=$('#tn').value;o.conv=$('#tc').value;
+ T[cur]=o;
+ var r=saveT(),sv=$('#sv');
+ if(r.ok){sv.className='';sv.textContent='Saved on this device at '+new Date().toLocaleTimeString()}
+ else{sv.className='err';sv.textContent='NOT saved: '+r.err+'. Your changes exist only in this open page. Use Export backup to keep them.'}
+ info();updateBt()});
+$('#dr').addEventListener('change',function(){if(!cur)return;var sc=$('#list').scrollTop;render(false);$('#list').scrollTop=sc});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!$('#dr').hidden)closeD()});
+
+/* ---------- My Tracker ---------- */
+function followText(t){if(!validDate(t.follow))return'';var n=days(t.follow);
+ return' \u00b7 follow-up '+t.follow+(n<0?' (overdue by '+(-n)+(n===-1?' day':' days')+')':n===0?' (due today)':' (in '+n+(n===1?' day':' days')+')')}
+$('#bt').onclick=function(){
+ var i=dueInfo(),listed={};
+ var row=function(id){var r=byId(id),t=ent(id),s=STATUS.filter(function(x){return x[0]===t.status})[0];listed[id]=1;
+  return r?'<a href="#" class="lk" data-id="'+esc(id)+'"><b>'+esc(title(r))+'</b> <small>'+esc((s?s[1]:'')+followText(t)+(validDate(t.last)?' \u00b7 last contact '+t.last:''))+'</small></a>'
+   :'<p><b>'+esc(id)+'</b> <small>Record no longer listed'+esc(followText(t))+'</small></p>'};
+ var sec=function(h,arr){return arr.length?'<h4>'+h+' ('+arr.length+')</h4>'+arr.map(row).join(''):''};
+ var body=sec('Overdue follow-ups',i.over)+sec('Due today',i.due)+sec('Upcoming follow-ups',i.up);
+ var other=Object.keys(T).filter(function(k){var t=ent(k);return!listed[k]&&((t.status&&t.status!=='none')||t.notes||t.conv||t.last||t.follow)}).sort();
+ body+=sec('Other tracked records',other);
+ var sum=(i.over.length||i.due.length)?'<p><b>'+i.over.length+' overdue, '+i.due.length+' due today.</b></p>':'<p>No follow-ups are overdue or due today.</p>';
+ if(!body)sum='';
+ showD('<button id="xd" style="float:right">Close</button><h3 id="dt" tabindex="-1" style="margin:0 0 8px">My Tracker</h3>'+sum+
+  (body||'<p class="empty">Nothing tracked yet. Open any record and set a status or add notes.</p>')+
+  (storeOK?'':'<p class="dim">Warning: browser storage is not working; changes are not being saved.</p>'),'#8B5CF6');
+ cur=null};
+
+/* ---------- backup ---------- */
+function checkTracker(tr){
+ if(!tr||typeof tr!=='object'||Array.isArray(tr))return'The file has no "tracker" object.';
+ var ks=Object.keys(tr),i,k,t,f;
+ for(i=0;i<ks.length;i++){k=ks[i];t=tr[k];
+  if(k==='__proto__')return'Entry key "__proto__" is not allowed.';
+  if(!t||typeof t!=='object'||Array.isArray(t))return'Entry "'+k+'" is not an object.';
+  if(t.status!==undefined&&!STATUS.some(function(x){return x[0]===t.status}))return'Entry "'+k+'" has an unknown status.';
+  for(f=0;f<2;f++){var dk=['last','follow'][f];if(t[dk]!==undefined&&t[dk]!==''&&!validDate(t[dk]))return'Entry "'+k+'" has an invalid '+dk+' date.'}
+  for(f=0;f<2;f++){var sk=['notes','conv'][f];if(t[sk]!==undefined&&typeof t[sk]!=='string')return'Entry "'+k+'" has invalid '+sk+'.'}}
+ return''}
+function cleanEntry(t){var o={};Object.keys(t).forEach(function(k){if(k!=='__proto__')o[k]=t[k]});
+ o.status=o.status||'none';o.last=o.last||'';o.follow=o.follow||'';o.notes=o.notes||'';o.conv=o.conv||'';return o}
+function checkData(j){
+ var seen={},names=['universities','supervisors','openings'],i,a,n;
+ if(!Array.isArray(j.universities))return'"universities" must be a list.';
+ for(i=0;i<3;i++){a=j[names[i]];if(a===undefined)continue;
+  if(!Array.isArray(a))return'"'+names[i]+'" must be a list.';
+  for(n=0;n<a.length;n++){var r=a[n];
+   if(!r||typeof r!=='object'||typeof r.id!=='string'||!r.id)return'A record in "'+names[i]+'" has no text id.';
+   if(has(seen,r.id))return'Duplicate id "'+r.id+'".';seen[r.id]=1;
+   if((r.lat!=null&&typeof r.lat!=='number')||(r.lng!=null&&typeof r.lng!=='number'))return'Record "'+r.id+'" has non-numeric coordinates.'}}
+ return''}
+$('#be').onclick=function(){
+ var url=URL.createObjectURL(new Blob([JSON.stringify({version:1,exportedAt:new Date().toISOString(),tracker:T},null,1)],{type:'application/json'}));
+ var a=document.createElement('a');a.href=url;a.download='phdmap-backup-'+today()+'.json';document.body.appendChild(a);a.click();a.remove();
+ setTimeout(function(){URL.revokeObjectURL(url)},1000);
+ try{localStorage.setItem('phdmap.lastexport',today())}catch(e){}
+ msg('Backup download started ('+Object.keys(T).length+' tracker entries). Check your downloads folder to confirm the file was saved.');info()};
+$('#bi').onclick=function(){$('#fi').click()};
+$('#fi').onchange=function(e){
+ var f=e.target.files[0];e.target.value='';if(!f)return;
+ if(f.size>20*1024*1024){msg('Import failed: file is larger than 20 MB. Nothing was changed.');return}
+ var rd=new FileReader();
+ rd.onerror=function(){msg('Import failed: the file could not be read. Nothing was changed.')};
+ rd.onload=function(){
+  var j,err;
+  try{j=JSON.parse(rd.result)}catch(x){msg('Import failed: not valid JSON. Nothing was changed.');return}
+  if(!j||typeof j!=='object'||Array.isArray(j)){msg('Import failed: unexpected file layout. Nothing was changed.');return}
+  if(j.universities!==undefined){
+   err=checkData(j);if(err){msg('Data file rejected: '+err+' Nothing was changed.');return}
+   closeD(true);dataSource='imported file "'+f.name+'"';load(j);
+   msg('Loaded data from "'+f.name+'" for this session only. Reload the page to return to data.json. Your tracker was not changed.');return}
+  if(j.version!==undefined&&j.version!==1){msg('Import failed: backup version '+String(j.version)+' is not supported. Nothing was changed.');return}
+  err=checkTracker(j.tracker);if(err){msg('Backup rejected: '+err+' Nothing was changed.');return}
+  var ks=Object.keys(j.tracker),fresh=[],same=0,clash=[],c;
+  ks.forEach(function(k){var inc=cleanEntry(j.tracker[k]);
+   if(!has(T,k))fresh.push(k);else if(JSON.stringify(cleanEntry(ent(k)))===JSON.stringify(inc))same++;else clash.push(k)});
+  var ow=false,note='';
+  if(clash.length){
+   ow=confirm(clash.length+' entries already exist with different content.\n\nOK = replace them with the backup versions.\nCancel = keep your current versions (only new entries are added).');
+   if(ow){try{localStorage.setItem(TK+'.preimport',JSON.stringify(T));note=' Your previous tracker was also copied to browser storage key "'+TK+'.preimport".'}
+    catch(x){ow=false;note=' Replacing was cancelled because a safety copy of your current tracker could not be stored.'}}}
+  closeD(true);
+  var prev=T,next={};Object.keys(T).forEach(function(k){next[k]=T[k]});
+  fresh.forEach(function(k){next[k]=cleanEntry(j.tracker[k])});
+  if(ow)clash.forEach(function(k){next[k]=cleanEntry(j.tracker[k])});
+  T=next;
+  var r=saveT();
+  msg('Import done: '+fresh.length+' added, '+(ow?clash.length+' replaced':clash.length+' kept as yours')+', '+same+' identical.'+note+(r.ok?'':' WARNING: not saved to this browser ('+r.err+'); the import exists only in this open page. Export a backup.'));
+  render(false);info();updateBt()};
+ rd.readAsText(f)};
+
+/* ---------- start ---------- */
+function info(){
+ var last=null;try{last=localStorage.getItem('phdmap.lastexport')}catch(e){}
+ var need=Object.keys(T).length&&(!validDate(last)||days(last)<-14);
+ var counts=status==='ready'?D.universities.length+' universities, '+D.supervisors.length+' supervisors, '+D.openings.length+' openings':status==='loading'?'loading\u2026':'data not loaded';
+ $('#info').textContent='Data ('+dataSource+') updated: '+(D.lastUpdated||'not stated')+' \u00b7 '+counts+(need?' \u00b7 Export a backup of your tracker.':'')+(storeOK?'':' \u00b7 Browser storage unavailable: tracker not being saved.')}
+function load(j){
+ D={lastUpdated:j.lastUpdated||'',universities:j.universities||[],supervisors:j.supervisors||[],openings:j.openings||[]};
+ status='ready';$('#ban').hidden=true;info();updateBt();setView(view)}
+function fail(why){
+ status='error';
+ var b=$('#ban');b.textContent='';
+ var sp=document.createElement('span');sp.textContent='Could not load data.json: '+why;
+ var rb=document.createElement('button');rb.id='rt';rb.textContent='Retry';
+ b.appendChild(sp);b.appendChild(rb);b.hidden=false;info();render()}
+$('#ban').addEventListener('click',function(e){if(e.target.id==='rt')loadData()});
+function loadData(){
+ status='loading';$('#ban').hidden=true;info();render();
+ var ctrl=window.AbortController?new AbortController():null,to=ctrl&&setTimeout(function(){ctrl.abort()},20000);
+ fetch('data.json',{cache:'no-store',signal:ctrl?ctrl.signal:undefined})
+ .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status+' (is data.json in the same folder as index.html?)');return r.json()})
+ .then(function(j){
+  if(to)clearTimeout(to);
+  var e=(j&&typeof j==='object'&&!Array.isArray(j))?checkData(j):'unexpected layout.';
+  if(e)throw new Error('the file is malformed: '+e);
+  dataSource='data.json';load(j)})
+ .catch(function(err){
+  if(to)clearTimeout(to);
+  var m=err&&err.name==='AbortError'?'the request timed out.':err&&err.name==='SyntaxError'?'the file is not valid JSON.':err instanceof TypeError?'the file could not be fetched. If you opened index.html directly from disk, browsers block this; serve the folder over http (for example "python3 -m http.server") or use Import backup to load a data file.':(err&&err.message)||'unknown error.';
+  fail(m)})}
+updateBt();
+if(loadWarn)msg(loadWarn);
+setView(view);
+loadData();
+</script>
+</body></html>
