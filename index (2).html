@@ -1,0 +1,645 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PhD Map</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<style>
+:root{--bg:#f4f4f1;--fg:#1c1c1a;--mut:#6b6b64;--card:#fff;--bd:#e2e0d8;--soft:#f0efea;--r:10px;--ac:#2563eb;--ok:#15803d;--warn:#b45309;--bad:#dc2626;color-scheme:light dark}
+@media(prefers-color-scheme:dark){:root{--bg:#161614;--fg:#ecebe6;--mut:#9d9c94;--card:#212120;--bd:#383835;--soft:#2a2a28;--ac:#7db2ff;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{font:14px/1.45 system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--fg);display:flex;flex-direction:column}
+button,select,input,textarea{font:inherit;color:var(--fg);background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:6px 10px;min-height:34px}
+button{cursor:pointer}button:hover{background:var(--soft)}
+::placeholder{color:var(--mut);opacity:1}
+/* focus: 3px ring plus a 2px gap in the card colour, so it shows on filled and plain backgrounds */
+:focus-visible{outline:3px solid var(--ac);outline-offset:2px;box-shadow:0 0 0 2px var(--card)}
+#dr:focus,#list:focus{outline:none}
+.vh{position:absolute!important;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
+.skip{position:absolute;left:8px;top:-80px;z-index:2000;background:var(--card);color:var(--fg);border:2px solid var(--ac);padding:8px 12px;border-radius:8px;font-weight:600;text-decoration:none}
+.skip:focus{top:8px}
+/* header */
+header{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:8px 14px;background:var(--card);border-bottom:1px solid var(--bd)}
+.brand{font-weight:700;font-size:17px}
+.seg{display:flex;background:var(--soft);border-radius:9px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;min-height:30px;padding:3px 12px;border-radius:7px;color:var(--mut)}
+.seg button.on{background:var(--c);color:var(--t);font-weight:600}
+#q{flex:1;min-width:150px;max-width:420px}
+.menu{position:relative}.menu summary{list-style:none;cursor:pointer;padding:6px 10px;border:1px solid var(--bd);border-radius:8px;min-height:34px;display:flex;align-items:center}
+.menu summary::-webkit-details-marker{display:none}
+.mp{position:absolute;right:0;top:40px;background:var(--card);border:1px solid var(--bd);border-radius:var(--r);padding:6px;display:flex;flex-direction:column;gap:4px;z-index:1300;box-shadow:0 6px 20px #0003;min-width:160px}
+#ban{padding:8px 14px;background:#fde68a;color:#111}
+/* layout */
+main{flex:1;min-height:0;display:grid;grid-template-columns:1fr 420px}
+#map{background:#cfd8e3;min-height:280px}
+#side{display:flex;flex-direction:column;min-height:0;border-left:1px solid var(--bd);background:var(--bg)}
+.fd{background:var(--card);border-bottom:1px solid var(--bd)}
+.fd>summary{list-style:none;cursor:pointer;display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;padding:6px 12px;min-height:36px;font-weight:600}
+.fd>summary::-webkit-details-marker{display:none}
+.fd>summary::before{content:"";flex:none;width:7px;height:7px;margin:0 4px 0 2px;border-right:2px solid var(--mut);border-bottom:2px solid var(--mut);transform:rotate(-45deg)}
+.fd[open]>summary::before{transform:rotate(45deg)}
+#filters{padding:0 12px 10px;display:flex;flex-direction:column;gap:8px}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fr select{width:100%;min-width:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.hint{font-size:12.5px;color:var(--mut)}
+.tg{border-radius:999px;padding:3px 11px;min-height:28px;font-size:13px;color:var(--mut)}
+.tg.on{background:var(--ac);border-color:var(--ac);color:#fff;font-weight:600}
+@media(prefers-color-scheme:dark){.tg.on{color:#111}}
+#bar{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:2px 12px;padding:8px 14px 2px;color:var(--mut);font-size:13px}
+#bar b{color:var(--fg)}
+.bacts{display:flex;flex-wrap:wrap;gap:0 14px}
+#fs{padding:2px 14px 4px;font-size:12.5px;color:var(--mut);overflow-wrap:anywhere}
+#fs b{color:var(--fg);font-weight:600}
+.lnk{background:none;border:0;color:var(--ac);padding:2px 4px;min-height:28px;cursor:pointer;text-decoration:underline}
+.lnk:hover{background:none}
+#list{overflow:auto;flex:1;padding:6px 10px 10px}
+#foot{padding:6px 14px;font-size:12px;color:var(--mut);border-top:1px solid var(--bd);background:var(--card)}
+.empty{padding:20px;color:var(--mut);text-align:center}
+/* cards */
+.card{margin:6px 0;padding:10px 12px;background:var(--card);border:1px solid var(--bd);border-left:4px solid var(--c);border-radius:var(--r);cursor:pointer;overflow-wrap:anywhere}
+.card:hover,.card.sel{border-color:var(--c);box-shadow:0 1px 8px #0002}
+.card:focus-visible{box-shadow:0 0 0 2px var(--card)}
+.ct{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.ct b{font-weight:600;line-height:1.3;min-width:0}
+.ct .bd{flex:none}
+.cs{color:var(--mut);font-size:12.5px;margin-top:2px}
+.cf{font-size:12.5px;margin-top:6px;color:var(--mut)}
+.row{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.bd{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--soft);color:var(--mut);white-space:nowrap;font-weight:500}
+.bd.red{background:var(--bad);color:#fff}.bd.amb{background:#f59e0b;color:#111}.bd.grn{background:var(--ok);color:#fff}.bd.fp{background:#ede9fe;color:#4c1d95}.bd.org{background:#f97316;color:#111}.bd.grey{box-shadow:inset 0 0 0 1px var(--bd)}
+.bd.act{background:var(--ac);color:#fff}
+@media(prefers-color-scheme:dark){.bd.grn,.bd.red,.bd.act{color:#111}}
+/* drawer */
+#dr{position:fixed;top:0;right:0;bottom:0;width:440px;max-width:100%;background:var(--card);z-index:1200;box-shadow:0 0 24px #0006;display:flex;flex-direction:column;border-top:4px solid var(--c)}
+#dh{padding:14px 16px 0;border-bottom:1px solid var(--bd)}
+.kind{display:flex;align-items:center;gap:6px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--fg);font-weight:700}
+.kind::before{content:"";flex:none;width:9px;height:9px;border-radius:50%;background:var(--c)}
+#dh h2{margin:2px 0 2px;font-size:19px;line-height:1.25;padding-right:36px;overflow-wrap:anywhere}
+#xd{position:absolute;top:12px;right:12px;width:32px;padding:0;border-radius:50%}
+.sub{color:var(--mut);font-size:13px;overflow-wrap:anywhere}
+.acts{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;min-height:34px;border-radius:8px;border:1px solid var(--bd);text-decoration:none;color:var(--fg);font-weight:600;font-size:13px;background:var(--card)}
+.btn.pri{background:var(--c);border-color:var(--c);color:var(--t)}
+.dtabs{display:flex;gap:4px}
+.dtabs button{border:0;border-bottom:3px solid transparent;border-radius:0;background:none;color:var(--mut);padding:6px 12px}
+.dtabs button.on{color:var(--fg);border-color:var(--c);font-weight:600}
+#db{flex:1;overflow:auto;padding:14px 16px calc(24px + env(safe-area-inset-bottom,0px))}
+.sec{margin-bottom:16px}
+.sec h4{margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut)}
+.facts{background:var(--soft);border-radius:var(--r);padding:4px 12px}
+.fact{display:grid;grid-template-columns:105px minmax(0,1fr);gap:8px;padding:7px 0;border-bottom:1px solid var(--bd)}
+.fact>div{overflow-wrap:anywhere}
+.fact:last-child{border:0}
+.fact span{color:var(--mut);font-size:12.5px}
+.txt{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.55;max-width:68ch}
+.note{font-size:12.5px;color:var(--mut);margin:0 0 8px}
+#db a{color:var(--ac);word-break:break-word}
+.rl{display:flex;flex-direction:column;gap:4px}
+.rl a{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px;padding:7px 10px;min-height:34px;border:1px solid var(--bd);border-radius:8px;text-decoration:none;color:var(--fg)}
+.rl a:hover{background:var(--soft)}
+.host{color:var(--mut);font-size:12px;overflow-wrap:anywhere}
+.lb{display:block;width:100%;text-align:left;padding:7px 10px;border-radius:8px;overflow-wrap:anywhere}
+.lb small{display:block;color:var(--mut);font-weight:400}
+#db label{display:block;font-size:12.5px;color:var(--mut);margin-bottom:10px}
+#db textarea,#db select,#db input{width:100%;margin-top:3px}
+.ti{display:block;width:100%;text-align:left;padding:9px 10px;border-radius:8px;margin-bottom:6px;color:var(--fg)}
+.ti small{color:var(--mut);display:block}
+/* popup (the Leaflet popup is always white, so colours here are fixed, not theme variables) */
+.leaflet-popup-content{margin:12px 14px;min-width:220px}
+.ph{font-weight:700;margin-bottom:2px;overflow-wrap:anywhere}
+.pc{font-size:12.5px;color:#444;margin-bottom:6px}
+.pr{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:5px 0;border-top:1px solid var(--bd)}
+.pr .pt{flex:1;min-width:0}
+.pr .pt small{display:block;color:#555;font-size:12px}
+.pr button.t{display:block;text-align:left;background:none;border:0;border-radius:4px;padding:2px 0;min-height:28px;color:#2563eb;font-weight:400;overflow-wrap:anywhere}
+.pr button.t:hover{background:none;text-decoration:underline}
+.pr a.x,.pb a{display:inline-flex;align-items:center;min-height:28px;color:#2563eb;font-weight:600;text-decoration:none;white-space:nowrap}
+.pb{display:flex;gap:12px;flex-wrap:wrap;margin-top:4px}
+.leaflet-popup :focus-visible,.leaflet-control :focus-visible{outline:3px solid #1d4ed8;outline-offset:1px;box-shadow:0 0 0 2px #fff}
+.leaflet-container:focus-visible{outline:3px solid #1d4ed8;outline-offset:-3px;box-shadow:none}
+.leaflet-interactive:focus{outline:none}
+.leaflet-tooltip.cnt{background:transparent;border:0;box-shadow:none;color:#111;font-weight:700}
+.leaflet-tooltip.cnt:before{display:none}
+.maphint{background:#ffffffe6;color:#333;padding:3px 8px;border-radius:6px;font-size:12px;max-width:min(260px,calc(100% - 70px));margin:0}
+/* touch: larger targets on coarse pointers */
+@media(pointer:coarse){button,select,input{min-height:40px}.tg{min-height:36px}.seg button{min-height:36px}.lnk{min-height:36px}.pr button.t,.pr a.x,.pb a{min-height:36px}}
+/* small screens */
+@media(max-width:850px){
+header{gap:8px}
+.brand{order:1;margin-right:auto}#bt{order:2}.menu{order:3}
+.seg{order:4;flex:1 1 100%}.seg button{flex:1;padding:3px 6px}
+#q{order:5;flex:1 1 100%;max-width:none}
+main{grid-template-columns:1fr;grid-template-rows:minmax(180px,36vh) minmax(0,1fr)}
+#map{min-height:0}
+#side{border-left:0;border-top:1px solid var(--bd);overflow-y:auto}
+#list{flex:1 0 170px}
+#dr{top:auto;left:0;width:auto;height:82vh;border-radius:14px 14px 0 0}
+#db .fr{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}}
+@supports(height:1dvh){@media(max-width:850px){main{grid-template-rows:minmax(180px,36dvh) minmax(0,1fr)}#dr{height:82dvh}}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+</style></head><body>
+<a class="skip" id="skip" href="#list">Skip to results list</a>
+<header>
+ <div class="brand">PhD Map</div>
+ <div id="tabs" class="seg" role="group" aria-label="View"></div>
+ <input id="q" type="search" aria-label="Search" placeholder="Search names, topics, funding, deadlines" autocomplete="off">
+ <button type="button" id="bt">My Tracker</button>
+ <details class="menu" id="bk"><summary>Backup</summary><div class="mp"><button type="button" id="be">Export backup</button><button type="button" id="bi">Import backup</button></div></details>
+ <input id="fi" type="file" accept=".json" hidden>
+</header>
+<div id="ban" role="alert" hidden></div>
+<main>
+ <div id="map" role="region" aria-label="Map of results. The results list has the same information."></div>
+ <section id="side" aria-label="Filters and results">
+  <details id="fd" class="fd" open><summary id="fsum">Filters</summary><div id="filters"></div></details>
+  <div id="bar"></div>
+  <div id="fs" hidden></div>
+  <div id="list" tabindex="-1" role="group" aria-label="Results list"></div>
+  <div id="foot"></div>
+ </section>
+</main>
+<div id="dr" role="dialog" aria-modal="true" aria-labelledby="dt" tabindex="-1" hidden></div>
+<div id="live" class="vh" role="status" aria-live="polite" aria-atomic="true"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script>
+"use strict";
+var $=function(s){return document.querySelector(s)};
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+/* VIEWS: label, marker/accent colour, text colour on that colour, singular noun */
+var VIEWS={openings:['Openings','#F59E0B','#111','opening'],universities:['Universities','#3B82F6','#111','university'],supervisors:['Supervisors','#10B981','#111','supervisor']};
+var STATUS=[['none','Not contacted'],['emailed','Emailed'],['replied','Replied'],['interview','Interview'],['offer','Offer'],['declined','Declined']];
+var PT={structured:'Structured programme',direct:'Direct PhD',both:'Structured or direct'};
+var TK='phdmap.tracker.v1';
+var D={universities:[],supervisors:[],openings:[]},view='openings',cur=null,dtab='d',loaded=false,opener=null,activeMk=null;
+var F={country:'',topic:'',hideClosed:true,funded:false,taking:false};
+var T={};
+try{T=JSON.parse(localStorage.getItem(TK))||{}}catch(e){T={}}
+function saveT(){try{localStorage.setItem(TK,JSON.stringify(T))}catch(e){}}
+function today(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function days(d){return Math.round((Date.parse(d)-Date.parse(today()))/864e5)}
+function uniOf(r){return r.lat!=null?r:(D.universities.find(function(u){return u.id===r.universityId})||{})}
+function byId(id){return D.openings.concat(D.universities,D.supervisors).find(function(r){return r.id===id})}
+function typeOf(r){return D.openings.indexOf(r)>=0?'openings':D.universities.indexOf(r)>=0?'universities':'supervisors'}
+function title(r){return r.title||r.name||r.id}
+function topics(r){return r.subfields||[]}
+function isUrl(u){return/^https?:\/\//.test(u||'')}
+function deadline(r){
+ if(r.status==='closed'||(r.deadline&&days(r.deadline)<0))return['Closed','grey',3];
+ if(!r.deadline)return['Rolling','',2];
+ var n=days(r.deadline);
+ return[n===0?'Due today':n+(n===1?' day left':' days left'),n<14?'red':'amb',1]}
+function hostOf(u){return String(u).replace(/^https?:\/\/(www\.)?/,'').split('/')[0]}
+/* the one page each record should link to */
+function mainLink(r,t){var u=uniOf(r),x;
+ if(t==='supervisors')x=[r.staffPageUrl,r.sourceUrl,u.phdProgramUrl];
+ else if(t==='universities')x=[r.phdProgramUrl,r.sourceUrl,r.url];
+ else x=[r.sourceUrl,r.applyUrl,u.phdProgramUrl];
+ for(var i=0;i<x.length;i++)if(isUrl(x[i]))return x[i];return''}
+var LBL={supervisors:'Staff page',universities:'Astrophysics programme page',openings:'Listing page'};
+var ARR=' <span aria-hidden="true">&#8599;</span><span class="vh"> (opens in a new tab)</span>';
+function cssq(s){return String(s).replace(/["\\]/g,'\\$&')}
+function focusEl(el){try{el.focus({preventScroll:true})}catch(e){}}
+function shown(el){return!!(el&&el.isConnected&&el.getClientRects().length)}
+
+/* ---------- status messages (screen readers) ---------- */
+var sayT;
+function say(msg){clearTimeout(sayT);sayT=setTimeout(function(){$('#live').textContent=msg},400)}
+
+/* ---------- map ---------- */
+var RM=window.matchMedia?window.matchMedia('(prefers-reduced-motion: reduce)'):{matches:false};
+function reduced(){return!!RM.matches}
+var map=L.map('map',{minZoom:3,maxBounds:[[28,-32],[74,52]],zoomAnimation:!reduced(),fadeAnimation:!reduced(),markerZoomAnimation:!reduced(),inertia:!reduced()}).setView([52,12],4);
+try{if(RM.addEventListener)RM.addEventListener('change',function(){map.options.inertia=!reduced()});else if(RM.addListener)RM.addListener(function(){map.options.inertia=!reduced()})}catch(e){}
+var tileFails=0,tl,usingFallback=false;
+function addTiles(url,att){
+ if(tl)tl.remove();tileFails=0;
+ tl=L.tileLayer(url,{attribution:att,maxZoom:15}).addTo(map);
+ tl.on('tileerror',function(){tileFails++;
+  if(tileFails===6&&!usingFallback){usingFallback=true;
+   addTiles('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}','Tiles &copy; Esri')}})}
+addTiles('https://tile.openstreetmap.org/{z}/{x}/{y}.png','&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors');
+var layer=L.layerGroup().addTo(map);
+var hint=L.control({position:'bottomleft'});
+hint.onAdd=function(){var d=L.DomUtil.create('div','maphint');d.textContent='A number on a marker shows how many records share that location.';return d};
+hint.addTo(map);
+function showHint(on){var c=hint.getContainer();if(c)c.style.display=on?'':'none'}
+
+/* Viewport rules: render() never moves the map by itself. It is fitted to the results on load, view switch,
+   Clear filters, Enter in search and the "Fit map to results" button; after a filter choice only while the
+   user has not panned or zoomed since the last fit. Fits are instant (no animation). */
+var lastFit=null,curPts=[];
+function fitTo(pts){
+ if(!pts.length)return;
+ map.fitBounds(pts,{padding:[30,30],maxZoom:7,animate:false});
+ lastFit={c:map.getCenter(),z:map.getZoom()}}
+function userMoved(){
+ if(!lastFit)return false;
+ if(map.getZoom()!==lastFit.z)return true;
+ return map.latLngToContainerPoint(lastFit.c).distanceTo(map.getSize().divideBy(2))>3}
+/* the part of the map covered by the open drawer, so a revealed marker is not hidden under it */
+function drawerOverlap(){
+ var m=$('#map').getBoundingClientRect(),d=$('#dr').getBoundingClientRect(),r=0,b=0;
+ if(!$('#dr').hidden&&d.right>m.left&&d.left<m.right&&d.bottom>m.top&&d.top<m.bottom){
+  if(d.left<=m.left+1&&d.right>=m.right-1)b=Math.max(0,m.bottom-Math.max(d.top,m.top));
+  else r=Math.max(0,m.right-Math.max(d.left,m.left))}
+ return{r:r,b:b,w:m.width,h:m.height}}
+/* pan the least amount needed to keep the record's marker visible; never changes zoom */
+function revealOnMap(u){
+ var o=drawerOverlap();
+ if(o.r>=o.w-60||o.b>=o.h-60)return;
+ map.panInside(L.latLng(u.lat,u.lng),{paddingTopLeft:[24,24],paddingBottomRight:[o.r+24,o.b+24],animate:!reduced()})}
+
+/* ---------- search index ---------- */
+var SX={},SUPBY={},SUPAT={},NK={};
+var MON=['january','february','march','april','may','june','july','august','september','october','november','december'];
+function norm(s){s=String(s==null?'':s).toLowerCase();try{s=s.normalize('NFD').replace(/[\u0300-\u036f]/g,'')}catch(e){}return s.replace(/-/g,' ')}
+function nameKey(s){return norm(s).replace(/[^a-z0-9 ]+/g,' ').split(/\s+/).filter(Boolean).sort().join(' ')}
+function when(d){var m=/^(\d{4})-(\d{2})-(\d{2})/.exec(d||'');if(!m)return d||'';var mn=MON[+m[2]-1]||'';return d+' '+(+m[3])+' '+mn+' '+mn.slice(0,3)+' '+m[1]}
+/* only text that is visible somewhere in the UI; never ids, urls or internal flags */
+function hayParts(r){
+ var u=uniOf(r),p=[title(r),r.group,u.name,u.city,u.country,topics(r).join(' '),r.funding,r.fundedProject,r.notes,r.deadlineNote];
+ if(view==='openings'){var s=SUPBY[r.supervisorId];
+  p.push(r.deadline?when(r.deadline):(r.status==='closed'?'closed':'rolling'),deadline(r)[2]===3?'closed':'',topics(u).join(' '));
+  if(s)p.push(s.name,s.group,topics(s).join(' '))}
+ else if(view==='universities')p.push((SUPAT[r.id]||[]).join(' '));
+ return p}
+function hay(r){var k=view+':'+r.id,h=SX[k];if(h===undefined)h=SX[k]=norm(hayParts(r).join(' '));return h}
+
+/* ---------- filtering ---------- */
+function items(o){
+ o=o||{};
+ var qs=norm($('#q').value).split(/\s+/).filter(Boolean);
+ var a=D[view].filter(function(r){
+  var u=uniOf(r);
+  if(F.country&&u.country!==F.country)return false;
+  if(F.topic&&topics(r).indexOf(F.topic)<0&&!(view==='openings'&&topics(u).indexOf(F.topic)>=0))return false;
+  if(F.funded&&view!=='universities'&&!r.fundedProject)return false;
+  if(F.taking&&view==='supervisors'&&r.takingStudents!=='yes')return false;
+  if(view==='openings'&&F.hideClosed&&!o.withClosed&&deadline(r)[2]===3)return false;
+  if(qs.length){var h=hay(r);for(var i=0;i<qs.length;i++)if(h.indexOf(qs[i])<0)return false}
+  return true});
+ if(view==='openings')a.sort(function(x,y){var k=deadline(x)[2]-deadline(y)[2];return k||String(x.deadline).localeCompare(String(y.deadline))});
+ else a.sort(function(x,y){return title(x).localeCompare(title(y))});
+ return a}
+/* which filters are set: act = applied in this view, idle = kept but their control is hidden or not used here */
+function filterState(){
+ var act=[],idle=[],q=($('#q').value||'').trim();
+ if(F.country)act.push('Country: '+F.country);
+ if(F.topic)act.push('Topic: '+F.topic);
+ if(q)act.push('Search: \u201c'+q+'\u201d');
+ if(F.funded)(view!=='universities'?act:idle).push('Funded project');
+ if(F.taking)(view==='supervisors'?act:idle).push('Taking students');
+ if(!F.hideClosed)(view==='openings'?act:idle).push('Closed openings shown');
+ return{act:act,idle:idle}}
+
+function renderFilters(){
+ var uniq=function(a){return a.filter(function(v,i){return v&&a.indexOf(v)===i}).sort()};
+ var countries=uniq(D.universities.map(function(u){return u.country}));
+ var tops=uniq([].concat.apply([],D.universities.concat(D.supervisors).map(topics)));
+ var opt=function(a,sel,all){return'<option value="">'+all+'</option>'+a.map(function(x){return'<option'+(x===sel?' selected':'')+'>'+esc(x)+'</option>'}).join('')};
+ var tg=function(id,on,label){return'<button type="button" class="tg'+(on?' on':'')+'" data-t="'+id+'" aria-pressed="'+on+'">'+label+'</button>'};
+ $('#filters').innerHTML=
+  '<div class="fr"><select id="fc" aria-label="Country">'+opt(countries,F.country,'All countries')+'</select>'+
+  '<select id="ft" aria-label="Topic">'+opt(tops,F.topic,'All topics')+'</select></div>'+
+  '<div class="chips">'+
+  (view==='openings'?tg('hideClosed',F.hideClosed,'Hide closed'):'')+
+  (view!=='universities'?tg('funded',F.funded,'Funded project'):'')+
+  (view==='supervisors'?tg('taking',F.taking,'Taking students'):'')+
+  '</div>'+
+  (view==='openings'?'<small class="hint">Closed openings are hidden by default. Switch off \u201cHide closed\u201d to include them.</small>':'')}
+$('#filters').addEventListener('change',function(e){
+ if(e.target.id==='fc')F.country=e.target.value;
+ else if(e.target.id==='ft')F.topic=e.target.value;
+ render({fit:'auto'})});
+$('#filters').addEventListener('click',function(e){
+ var b=e.target.closest('[data-t]');if(!b)return;
+ var k=b.getAttribute('data-t');F[k]=!F[k];
+ b.classList.toggle('on',F[k]);b.setAttribute('aria-pressed',String(F[k]));
+ render({fit:'auto'})});
+function clearAll(){
+ F={country:'',topic:'',hideClosed:true,funded:false,taking:false};$('#q').value='';
+ renderFilters();render({fit:'force',say:false});
+ say('Filters cleared. '+summaryText(items()));
+ $('#fsum').focus()}
+$('#bar').addEventListener('click',function(e){
+ if(e.target.id==='fx')clearAll();
+ else if(e.target.id==='fit'){fitTo(curPts);say('Map fitted to the results.')}});
+var qt;
+$('#q').addEventListener('input',function(){clearTimeout(qt);qt=setTimeout(function(){render()},150)});
+$('#q').addEventListener('keydown',function(e){if(e.key==='Enter'){clearTimeout(qt);render({fit:'force'})}});
+
+/* ---------- cards ---------- */
+function statusChip(id){var t=T[id];if(!t||!t.status||t.status==='none')return'';
+ var s=STATUS.filter(function(x){return x[0]===t.status})[0];return s?'<span class="bd grn">'+s[1]+'</span>':''}
+function card(r){
+ var u=uniOf(r),sub,right='',foot='',b='';
+ if(view==='openings'){var d=deadline(r);right='<span class="bd '+d[1]+'">'+d[0]+'</span>';sub=(u.name||'')+' · '+(u.country||'');foot=r.deadline?'Deadline '+r.deadline:'';}
+ else if(view==='universities'){sub=(r.city||'')+', '+(r.country||'');if(r.programType)b+='<span class="bd">'+esc(PT[r.programType]||r.programType)+'</span>'}
+ else{sub=[r.group,u.name].filter(Boolean).join(' · ');if(r.takingStudents==='yes')b+='<span class="bd amb">Taking students</span>'}
+ if(r.fundedProject)b+='<span class="bd fp">&#9670; Funded</span>';
+ if(r.uncertain)b+='<span class="bd org">Verify</span>';
+ var t=T[r.id]||{};
+ if(t.follow&&days(t.follow)<=0)b+='<span class="bd red">Follow up</span>';
+ b+=statusChip(r.id);
+ return'<div class="card'+(r.id===cur?' sel':'')+'" data-id="'+esc(r.id)+'" style="--c:'+VIEWS[view][1]+'" role="button" tabindex="0" aria-haspopup="dialog"'+(r.id===cur?' aria-current="true"':'')+'><div class="ct"><b>'+esc(title(r))+'</b>'+right+'</div><div class="cs">'+esc(sub)+'</div>'+(foot?'<div class="cf">'+esc(foot)+'</div>':'')+(b?'<div class="row">'+b+'</div>':'')+'</div>'}
+
+/* ---------- popup + markers ---------- */
+function popup(g){
+ var V=VIEWS[view],n=g.rs.length,multi=g.insts.length>1,solo=view==='universities'&&n===1;
+ var pop=document.createElement('div'),
+  h='<div class="ph">'+esc(multi?(g.u.city||'Shared location')+' ('+g.insts.length+' institutions)':g.insts[0]||'')+'</div>';
+ if(n>1)h+='<div class="pc">'+n+' '+V[0].toLowerCase()+' at this location</div>';
+ h+=g.rs.map(function(r){
+  var ml=mainLink(r,view),u=uniOf(r),
+   lab=view==='supervisors'?'Profile':view==='universities'?'Astrophysics page':'Listing',
+   ex=ml?'<a class="x" href="'+esc(ml)+'" target="_blank" rel="noopener">'+lab+ARR+'</a>':'';
+  return'<div class="pr"><div class="pt"><button type="button" class="t" data-id="'+esc(r.id)+'">'+esc(solo?'Details':title(r))+'</button>'+
+   (multi&&view!=='universities'?'<small>'+esc(u.name||'')+'</small>':'')+'</div>'+ex+'</div>'}).join('');
+ pop.innerHTML=h;
+ pop.addEventListener('click',function(e){var b=e.target.closest('button[data-id]');if(b)openD(b.getAttribute('data-id'))});
+ /* keep map pan/zoom keys from firing while focus is inside the popup */
+ pop.addEventListener('keydown',function(e){if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','+','-','=','_'].indexOf(e.key)>=0)e.stopPropagation()});
+ return pop}
+
+var BASE={color:'#fff',weight:1.5},FOCUS={color:'#111',weight:4},mk=[];
+function fvis(el){try{return el.matches(':focus-visible')}catch(e){return true}}
+function goMarker(j){
+ if(!mk.length)return;j=Math.max(0,Math.min(mk.length-1,j));
+ mk.forEach(function(x,i){var e=x.getElement();if(e)e.setAttribute('tabindex',i===j?'0':'-1')});
+ var m=mk[j],ll=m.getLatLng();
+ if(!map.getBounds().contains(ll))map.panInside(ll,{padding:[40,40],animate:!reduced()});
+ var e=m.getElement();if(e)focusEl(e)}
+/* Leaflet circle markers are plain SVG: give them button semantics, one tab stop, arrow-key movement */
+function wireMarker(m,g,i,rad){
+ var el=m.getElement&&m.getElement();if(!el)return;
+ var V=VIEWS[view],n=g.rs.length,place=g.insts.length===1?g.insts[0]:(g.u.city||'Shared location');
+ el.setAttribute('tabindex',i===0?'0':'-1');
+ el.setAttribute('role','button');el.setAttribute('aria-haspopup','true');
+ el.setAttribute('aria-label',place+': '+n+' '+(n===1?V[3]:V[0].toLowerCase())+(g.insts.length>1?' across '+g.insts.length+' institutions':'')+'. Press Enter to open the list.');
+ el.addEventListener('focus',function(){if(fvis(el)){m.setStyle(FOCUS);m.setRadius(rad+3)}});
+ el.addEventListener('blur',function(){m.setStyle(BASE);m.setRadius(rad)});
+ el.addEventListener('keydown',function(e){
+  if(e.altKey||e.ctrlKey||e.metaKey)return;
+  var k=e.key,j=mk.indexOf(m),to;
+  if(k==='Enter'||k===' '||k==='Spacebar'){
+   e.preventDefault();e.stopPropagation();m.openPopup();
+   var pe=m.getPopup()&&m.getPopup().getElement(),b=pe&&pe.querySelector('button.t');if(b)focusEl(b);return}
+  if(k==='ArrowRight'||k==='ArrowDown')to=j+1;else if(k==='ArrowLeft'||k==='ArrowUp')to=j-1;
+  else if(k==='Home')to=0;else if(k==='End')to=mk.length-1;else return;
+  e.preventDefault();e.stopPropagation();goMarker(to)});
+ m.on('popupopen',function(){activeMk=m});
+ m.on('popupclose',function(){
+  if(activeMk===m)activeMk=null;
+  var ae=document.activeElement;
+  if(ae===document.body||(ae&&ae.closest&&ae.closest('.leaflet-popup')))focusEl(el)})}
+
+var sig='';
+function buildMarkers(order,groups){
+ layer.clearLayers();mk=[];activeMk=null;
+ order.forEach(function(k,i){
+  var g=groups[k],n=g.rs.length,rad=Math.min(9+Math.sqrt(n)*3,24);
+  var m=L.circleMarker([g.u.lat,g.u.lng],{radius:rad,color:BASE.color,weight:BASE.weight,fillColor:VIEWS[view][1],fillOpacity:.9});
+  m.bindPopup(popup(g),{maxWidth:320,maxHeight:320});
+  if(n>1){m.bindTooltip(String(n),{permanent:true,direction:'center',className:'cnt'});
+   m.on('tooltipopen',function(e){var el=e.tooltip&&e.tooltip.getElement&&e.tooltip.getElement();if(el)el.setAttribute('aria-hidden','true')})}
+  m.addTo(layer);mk.push(m);wireMarker(m,g,i,rad)})}
+/* markers are only rebuilt when the set of records at each location changes, so typing or a tracker edit
+   does not close an open popup or drop keyboard focus from a marker */
+function renderMap(a,fit){
+ var groups={},order=[];
+ a.forEach(function(r){var u=uniOf(r);if(u.lat==null||u.lng==null)return;
+  var k=u.lat+','+u.lng,g=groups[k];
+  if(!g){g=groups[k]={u:u,rs:[],insts:[]};order.push(k)}
+  g.rs.push(r);if(g.insts.indexOf(u.name)<0)g.insts.push(u.name)});
+ curPts=order.map(function(k){return[groups[k].u.lat,groups[k].u.lng]});
+ var s=view+'|'+order.map(function(k){return k+'='+groups[k].rs.map(function(r){return r.id}).join(',')}).join(';');
+ if(s!==sig){sig=s;buildMarkers(order,groups)}
+ showHint(order.some(function(k){return groups[k].rs.length>1}));
+ if(fit==='force'||(fit==='auto'&&!userMoved()))fitTo(curPts)}
+
+/* ---------- list, counts, status ---------- */
+function summaryText(a){
+ var V=VIEWS[view],st=filterState(),n=st.act.length;
+ return a.length+' '+(a.length===1?V[3]:V[0].toLowerCase())+' shown'+(n?', '+n+(n===1?' filter':' filters')+' active':'')+'.'}
+function renderList(a){
+ var V=VIEWS[view],st=filterState(),n=st.act.length,idle=st.idle.length,extra='';
+ if(view==='openings'&&F.hideClosed){var hc=items({withClosed:true}).length-a.length;if(hc>0)extra=' · '+hc+' closed hidden'}
+ var hasLoc=a.some(function(r){return uniOf(r).lat!=null});
+ $('#bar').innerHTML='<span><b>'+a.length+'</b> '+(a.length===1?V[3]:V[0].toLowerCase())+esc(extra)+'</span><span class="bacts">'+
+  (hasLoc?'<button type="button" class="lnk" id="fit">Fit map to results</button>':'')+
+  (n||idle?'<button type="button" class="lnk" id="fx">Clear filters</button>':'')+'</span>';
+ var fs=[];
+ if(n)fs.push('<div><b>Filters in use:</b> '+esc(st.act.join(' · '))+'</div>');
+ if(idle)fs.push('<div><b>Set, but not used in this view:</b> '+esc(st.idle.join(', '))+'</div>');
+ $('#fs').innerHTML=fs.join('');$('#fs').hidden=!fs.length;
+ $('#fsum').innerHTML='Filters'+(n?' <span class="bd act">'+n+' active</span>':'')+(idle?' <span class="bd">'+idle+' not used in this view</span>':'');
+ $('#list').innerHTML=a.length?a.map(card).join(''):'<p class="empty">Nothing matches.<br>Clear a filter or change the search.</p>'}
+function markSel(){
+ var cs=$('#list').querySelectorAll('.card');
+ for(var i=0;i<cs.length;i++){var on=cs[i].getAttribute('data-id')===cur;cs[i].classList.toggle('sel',on);if(on)cs[i].setAttribute('aria-current','true');else cs[i].removeAttribute('aria-current')}}
+/* o.fit: 'force' | 'auto' | undefined (leave the map alone); o.map:false skips markers; o.keepScroll keeps list position */
+function render(o){
+ o=o||{};var a=items(),sc=$('#list').scrollTop;
+ renderList(a);
+ if(o.keepScroll)$('#list').scrollTop=sc;
+ if(o.map!==false)renderMap(a,o.fit);
+ info();
+ if(loaded&&o.say!==false)say(summaryText(a))}
+
+function buildTabs(){
+ $('#tabs').innerHTML=Object.keys(VIEWS).map(function(k){return'<button type="button" data-v="'+k+'" aria-pressed="false" style="--c:'+VIEWS[k][1]+';--t:'+VIEWS[k][2]+'">'+VIEWS[k][0]+'</button>'}).join('')}
+function markTabs(){
+ var bs=$('#tabs').children;
+ for(var i=0;i<bs.length;i++){var on=bs[i].getAttribute('data-v')===view;bs[i].classList.toggle('on',on);bs[i].setAttribute('aria-pressed',String(on))}}
+/* keep=true: called from openD, so the drawer state is left alone */
+function setView(v,keep){
+ view=v;
+ if(!keep){cur=null;hideDrawer(false)}
+ markTabs();renderFilters();render({fit:'force'})}
+$('#tabs').addEventListener('click',function(e){var b=e.target.closest('[data-v]');if(b)setView(b.getAttribute('data-v'))});
+$('#list').addEventListener('click',function(e){var c=e.target.closest('.card');if(c)openD(c.dataset.id)});
+$('#list').addEventListener('keydown',function(e){
+ var c=e.target.closest&&e.target.closest('.card');if(!c||e.target!==c||e.altKey||e.ctrlKey||e.metaKey)return;
+ if(e.key==='Enter'){e.preventDefault();if(!e.repeat)openD(c.dataset.id)}
+ else if(e.key===' '||e.key==='Spacebar')e.preventDefault(); /* stops the page scrolling; activates on keyup, like a native button */
+ else if(e.key==='ArrowDown'||e.key==='ArrowUp'||e.key==='Home'||e.key==='End'){
+  var cs=[].slice.call($('#list').querySelectorAll('.card')),i=cs.indexOf(c);
+  var j=e.key==='Home'?0:e.key==='End'?cs.length-1:e.key==='ArrowDown'?Math.min(i+1,cs.length-1):Math.max(i-1,0);
+  e.preventDefault();if(cs[j])cs[j].focus()}});
+$('#list').addEventListener('keyup',function(e){
+ var c=e.target.closest&&e.target.closest('.card');
+ if(c&&e.target===c&&(e.key===' '||e.key==='Spacebar')){e.preventDefault();openD(c.dataset.id)}});
+$('#skip').addEventListener('click',function(e){e.preventDefault();var c=$('#list .card');(c||$('#list')).focus()});
+
+/* ---------- detail drawer ---------- */
+function chips(a){return'<div class="row" style="margin:0">'+a.map(function(x){return'<span class="bd">'+esc(x)+'</span>'}).join('')+'</div>'}
+function fact(l,v){return v?'<div class="fact"><span>'+l+'</span><div>'+v+'</div></div>':''}
+function sec(h,body){return body?'<div class="sec"><h4>'+h+'</h4>'+body+'</div>':''}
+function lk(h,arr){return arr.length?sec(h,'<div class="rl">'+arr.map(function(x){return'<button type="button" class="lb" data-id="'+esc(x.id)+'">'+esc(title(x))+'</button>'}).join('')+'</div>'):''}
+function ext(u,l){return isUrl(u)?'<a href="'+esc(u)+'" target="_blank" rel="noopener"><span>'+esc(l||hostOf(u))+'</span>'+(l?'<small class="host">'+esc(hostOf(u))+'</small>':'')+ARR+'</a>':''}
+/* other supervisor records with the same name: shown for reference only, never merged */
+function sameName(r){
+ var o=(NK[nameKey(r.name)]||[]).filter(function(x){return x!==r});
+ if(!o.length)return'';
+ return sec('Same name in another record','<p class="note">Kept as separate records with their own affiliation and recruitment details. They may or may not be the same person.</p><div class="rl">'+
+  o.map(function(x){var ux=uniOf(x);return'<button type="button" class="lb" data-id="'+esc(x.id)+'">'+esc(x.name)+'<small>'+esc([x.group,ux.name].filter(Boolean).join(' · '))+' · Taking students: '+(x.takingStudents==='yes'?'yes':'not stated')+'</small></button>'}).join('')+'</div>')}
+
+function detailBody(r,t){
+ var u=uniOf(r),h='',f='';
+ if(t==='openings'){
+  var d=deadline(r);
+  f=fact('Deadline',r.deadline?esc(r.deadline)+' <span class="bd '+d[1]+'">'+d[0]+'</span>':'<span class="bd">'+d[0]+'</span>')+
+    fact('University',esc(u.name||''))+fact('Location',esc([u.city,u.country].filter(Boolean).join(', ')))+fact('Posted',esc(r.datePosted))+fact('Funded by',esc(r.fundedProject));
+  h=sec('Key info','<div class="facts">'+f+'</div>')+sec('Funding','<div class="txt">'+esc(r.funding)+'</div>')+
+    sec('Links','<div class="rl">'+[ext(r.sourceUrl,'Listing page'),ext(r.applyUrl,'Apply'),ext(u.phdProgramUrl,'Programme page')].filter(Boolean).map(function(x){return x.replace('<a ','<a class="ln" ')}).join('')+'</div>');
+  h+=lk('University',D.universities.filter(function(x){return x.id===r.universityId}))+lk('Supervisor',D.supervisors.filter(function(s){return s.id===r.supervisorId}))}
+ else if(t==='universities'){
+  f=fact('Location',esc((r.city||'')+(r.country?', '+r.country:'')))+fact('Route',esc(PT[r.programType]||''));
+  h=sec('Key info','<div class="facts">'+f+'</div>')+sec('Funding','<div class="txt">'+esc(r.funding)+'</div>')+sec('Deadlines','<div class="txt">'+esc(r.deadlineNote)+'</div>')+
+    sec('Topics',topics(r).length?chips(topics(r)):'')+
+    sec('Links','<div class="rl">'+[ext(r.phdProgramUrl,'Programme page'),ext(r.url,'University website'),ext(r.sourceUrl,'Source')].filter(Boolean).join('')+'</div>')+
+    lk('Also at this map location',D.universities.filter(function(x){return x!==r&&x.lat===r.lat&&x.lng===r.lng}))+
+    lk('Supervisors',D.supervisors.filter(function(s){return s.universityId===r.id}))+lk('Openings',D.openings.filter(function(o){return o.universityId===r.id}))}
+ else{
+  f=fact('University',esc(u.name||''))+fact('Location',esc([u.city,u.country].filter(Boolean).join(', ')))+fact('Group',esc(r.group))+fact('Taking students',r.takingStudents==='yes'?'<span class="bd amb">Yes</span>':'Not stated')+fact('Funded by',esc(r.fundedProject));
+  h=sec('Key info','<div class="facts">'+f+'</div>')+sec('Notes','<div class="txt">'+esc(r.notes)+'</div>')+sec('Topics',topics(r).length?chips(topics(r)):'')+
+    sec('Links','<div class="rl">'+[ext(r.staffPageUrl,'Staff page'),ext(r.sourceUrl,'Source')].filter(Boolean).join('')+'</div>')+
+    lk('University',D.universities.filter(function(x){return x.id===r.universityId}))+lk('Openings',D.openings.filter(function(o){return o.supervisorId===r.id}))+sameName(r)}
+ return h}
+
+function trackerBody(tr){
+ return'<label>Status<select id="ts">'+STATUS.map(function(s){return'<option value="'+s[0]+'"'+(s[0]===tr.status?' selected':'')+'>'+s[1]+'</option>'}).join('')+'</select></label>'+
+  '<div class="fr"><label>Last contact<input type="date" id="tl" value="'+esc(tr.last||'')+'"></label>'+
+  '<label>Follow-up date<input type="date" id="tf" value="'+esc(tr.follow||'')+'"></label></div>'+
+  '<label>Notes<textarea id="tn" rows="3" placeholder="Anything worth remembering">'+esc(tr.notes||'')+'</textarea></label>'+
+  '<label>Email conversations<textarea id="tc" rows="8" placeholder="Paste email conversations here">'+esc(tr.conv||'')+'</textarea></label><small id="sv" role="status" style="color:var(--ok)"></small>'}
+
+/* focus management: remember what opened the drawer, move focus in, return it on close */
+function captureOpener(){
+ var ae=document.activeElement,o={};
+ if(ae&&ae!==document.body&&!$('#dr').contains(ae)){o.el=ae;var c=ae.closest&&ae.closest('.card');if(c)o.id=c.getAttribute('data-id')}
+ if(activeMk)o.mkEl=activeMk.getElement();
+ return o}
+function restoreFocus(o){
+ var t=null;
+ if(o){
+  if(shown(o.el))t=o.el;
+  else if(shown(o.mkEl))t=o.mkEl;
+  else if(o.id)t=$('#list .card[data-id="'+cssq(o.id)+'"]')}
+ if(!t)t=$('#list .card')||$('#q');
+ if(t)focusEl(t)}
+function showDrawer(sel){
+ var dr=$('#dr');dr.hidden=false;
+ var f=(sel&&dr.querySelector(sel))||$('#dt');if(f)focusEl(f)}
+function hideDrawer(restore){
+ var dr=$('#dr');if(dr.hidden)return;
+ dr.hidden=true;cur=null;markSel();
+ var o=opener;opener=null;
+ if(restore)restoreFocus(o)}
+
+function openD(id,tab,o){
+ o=o||{};
+ var r=byId(id);if(!r)return;
+ var dr=$('#dr');if(dr.hidden)opener=captureOpener();
+ var t=typeOf(r);if(t!==view)setView(t,true);
+ var same=(id===cur);
+ cur=id;dtab=tab||'d';
+ var u=uniOf(r),tr=T[id]||{status:'none'},ml=mainLink(r,t),V=VIEWS[t];
+ var sub=t==='openings'?[u.name,u.country]:t==='universities'?[r.city,r.country]:[r.group,u.name];
+ var hasT=tr.status&&tr.status!=='none';
+ dr.style.setProperty('--c',V[1]);dr.style.setProperty('--t',V[2]);
+ dr.innerHTML='<div id="dh"><button type="button" id="xd" aria-label="Close details">&#10005;</button><div class="kind">'+V[3]+'</div><h2 id="dt" tabindex="-1">'+esc(title(r))+'</h2>'+
+  '<div class="sub">'+esc(sub.filter(Boolean).join(' · '))+'</div>'+
+  (r.uncertain?'<div style="margin-top:6px"><span class="bd org">Uncertain, check the official page</span></div>':'')+
+  '<div class="acts">'+(ml?'<a class="btn pri" href="'+esc(ml)+'" target="_blank" rel="noopener">'+LBL[t]+ARR+'</a>':'')+
+  (t==='openings'&&isUrl(r.applyUrl)&&r.applyUrl!==ml?'<a class="btn" href="'+esc(r.applyUrl)+'" target="_blank" rel="noopener">Apply'+ARR+'</a>':'')+'</div>'+
+  '<div class="dtabs" role="group" aria-label="Record sections"><button type="button" data-dt="d" aria-pressed="'+(dtab==='d')+'" class="'+(dtab==='d'?'on':'')+'">Details</button><button type="button" data-dt="t" aria-pressed="'+(dtab==='t')+'" class="'+(dtab==='t'?'on':'')+'">Tracker'+(hasT?' <span aria-hidden="true">&#8226;</span><span class="vh"> (has entries)</span>':'')+'</button></div></div>'+
+  '<div id="db">'+(dtab==='d'?detailBody(r,t)+'<small style="color:var(--mut)">Verified: '+esc(r.verified||'not stated')+'</small>':trackerBody(tr))+'</div>';
+ map.closePopup();
+ showDrawer(o.focus);
+ markSel();
+ /* only when the record changes, and only a minimal pan; zoom is never forced */
+ if(!same&&u.lat!=null)revealOnMap(u)}
+function closeD(){hideDrawer(true)}
+$('#dr').addEventListener('click',function(e){
+ if(e.target.closest('#xd')){closeD();return}
+ var tb=e.target.closest('[data-dt]');
+ if(tb&&cur){var k=tb.getAttribute('data-dt');openD(cur,k,{focus:'[data-dt="'+k+'"]'});return}
+ var a=e.target.closest('[data-id]');if(a){e.preventDefault();openD(a.getAttribute('data-id'))}});
+$('#dr').addEventListener('input',function(){
+ if(!cur||!$('#ts'))return;
+ T[cur]={status:$('#ts').value,last:$('#tl').value,follow:$('#tf').value,notes:$('#tn').value,conv:$('#tc').value};
+ saveT();$('#sv').textContent='Saved'});
+/* tracker edits only change card badges: refresh the list, leave the map and its viewport alone */
+$('#dr').addEventListener('change',function(){if(!cur||!$('#ts'))return;render({map:false,keepScroll:true,say:false})});
+function focusables(root){
+ return[].slice.call(root.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]):not([type=hidden]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')).filter(function(x){return x.getClientRects().length})}
+document.addEventListener('keydown',function(e){
+ var dr=$('#dr');
+ if(e.key==='Escape'){
+  var bk=$('#bk');
+  if(bk.open&&bk.contains(document.activeElement)){bk.open=false;bk.querySelector('summary').focus();return}
+  if(!dr.hidden)closeD();return}
+ /* the drawer takes keyboard focus while open: Tab cycles inside it */
+ if(e.key==='Tab'&&!dr.hidden){
+  var f=focusables(dr);
+  if(!f.length){e.preventDefault();dr.focus();return}
+  var first=f[0],last=f[f.length-1],ae=document.activeElement;
+  if(!dr.contains(ae)){e.preventDefault();(e.shiftKey?last:first).focus()}
+  else if(e.shiftKey&&ae===first){e.preventDefault();last.focus()}
+  else if(!e.shiftKey&&ae===last){e.preventDefault();first.focus()}}});
+
+/* ---------- My Tracker ---------- */
+$('#bt').onclick=function(){
+ var es=Object.keys(T).filter(function(k){var t=T[k];return t.status!=='none'||t.notes||t.conv||t.follow||t.last});
+ es.sort(function(a,b){return(T[a].follow||'9999').localeCompare(T[b].follow||'9999')});
+ var dr=$('#dr');if(dr.hidden)opener=captureOpener();
+ dr.style.setProperty('--c','#8B5CF6');cur=null;markSel();
+ dr.innerHTML='<div id="dh" style="padding-bottom:12px"><button type="button" id="xd" aria-label="Close details">&#10005;</button><div class="kind">Your progress</div><h2 id="dt" tabindex="-1">My Tracker</h2><div class="sub">'+es.length+' tracked, sorted by follow-up date</div></div><div id="db">'+
+  (es.length?es.map(function(id){var r=byId(id),t=T[id],s=STATUS.filter(function(x){return x[0]===t.status})[0];
+   var meta=[s&&t.status!=='none'?s[1]:'',t.follow?'follow-up '+t.follow:''].filter(Boolean).join(' · ');
+   return r?'<button type="button" class="ti" data-id="'+esc(id)+'"><b>'+esc(title(r))+'</b><small>'+esc(meta||'Notes only')+'</small></button>':'<div class="ti"><b>'+esc(id)+'</b><small>Record no longer listed</small></div>'}).join(''):'<p class="empty">Nothing tracked yet.<br>Open any record and use its Tracker tab.</p>')+'</div>';
+ showDrawer()};
+
+/* ---------- backup ---------- */
+$('#be').onclick=function(){
+ var a=document.createElement('a');
+ a.href=URL.createObjectURL(new Blob([JSON.stringify({version:1,tracker:T},null,1)],{type:'application/json'}));
+ a.download='phdmap-backup-'+today()+'.json';a.click();
+ try{localStorage.setItem('phdmap.lastexport',today())}catch(e){}info();$('#bk').open=false};
+$('#bi').onclick=function(){$('#bk').open=false;$('#fi').click()};
+$('#fi').onchange=function(e){
+ var f=e.target.files[0];if(!f)return;
+ var rd=new FileReader();
+ rd.onload=function(){try{
+  var j=JSON.parse(rd.result);
+  if(j.universities){load(j);return}
+  if(!j.tracker)throw 0;
+  var ks=Object.keys(j.tracker),clash=ks.filter(function(k){return T[k]}),ow=true;
+  if(clash.length)ow=confirm(clash.length+' entries already exist. Overwrite them with the backup?');
+  ks.forEach(function(k){if(!T[k]||ow)T[k]=j.tracker[k]});saveT();render({map:false,keepScroll:true,say:false});
+ }catch(err){alert('That file is not a valid PhD Map backup.')}};
+ rd.readAsText(f);e.target.value=''};
+
+/* ---------- start ---------- */
+function info(){
+ var last=null;try{last=localStorage.getItem('phdmap.lastexport')}catch(e){}
+ var need=Object.keys(T).length&&(!last||days(last)<-14);
+ $('#foot').textContent='Updated '+(D.lastUpdated||'n/a')+' · '+D.universities.length+' universities · '+D.supervisors.length+' supervisors · '+D.openings.length+' openings'+(need?' · Tip: export a backup of your tracker.':'')}
+function load(j){
+ D={lastUpdated:j.lastUpdated||'',universities:j.universities||[],supervisors:j.supervisors||[],openings:j.openings||[]};
+ SX={};SUPBY={};SUPAT={};NK={};sig='';
+ D.supervisors.forEach(function(s){
+  SUPBY[s.id]=s;(SUPAT[s.universityId]=SUPAT[s.universityId]||[]).push(s.name);
+  var k=nameKey(s.name);(NK[k]=NK[k]||[]).push(s)});
+ $('#ban').hidden=true;setView(view);loaded=true}
+buildTabs();
+if(window.matchMedia&&window.matchMedia('(max-width:850px)').matches)$('#fd').open=false;
+setView(view);
+fetch('data.json?t='+Date.now()).then(function(r){if(!r.ok)throw 0;return r.json()}).then(load).catch(function(){
+ $('#ban').hidden=false;
+ $('#ban').textContent='Could not load data.json. Make sure it is in the same folder as index.html, or use Backup, then Import backup to load a data file.'});
+</script>
+</body></html>
